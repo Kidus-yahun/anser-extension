@@ -1,0 +1,338 @@
+/* ==========================================================================
+   Anser - Gemini MCQ Solver: Injected Content Styles
+   Publication-grade / High-End Design System
+   ========================================================================== */
+
+/* Floating Widget Container */
+#anser-floating-widget {
+  position: fixed !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  z-index: 2147483647 !important;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif !important;
+  user-select: none !important;
+  box-sizing: border-box !important;
+  -webkit-font-smoothing: antialiased !important;
+  text-rendering: optimizeLegibility !important;
+  pointer-events: none !important;
+}
+
+#anser-floating-widget * {
+  box-sizing: border-box !important;
+  font-family: inherit !important;
+}
+
+.anser-widget-inner {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  gap: 10px !important;
+}
+
+/* Stealth Mode Hidden State */
+#anser-floating-widget.anser-stealth #anser-solve-btn,
+.anser-btn-trigger.stealth-hidden {
+  display: none !important;
+}
+
+/* Outer Shell / Double-Bezel Hardware Enclosure */
+.anser-btn-trigger {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: linear-gradient(180deg, rgba(32, 28, 25, 0.95) 0%, rgba(18, 16, 14, 0.95) 100%) !important;
+  color: #fafaf9 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-top-color: rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 
+    0 12px 32px -4px rgba(0, 0, 0, 0.55),
+    0 4px 12px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 0 1px rgba(0, 0, 0, 0.4) !important;
+  border-radius: 9999px !important;
+  padding: 4px 11px 4px 4px !important;
+  height: 30px !important;
+  cursor: pointer !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s ease,
+              background 0.2s ease !important;
+  outline: none !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  pointer-events: auto !important;
+}
+
+.anser-btn-trigger:hover {
+  transform: translateY(-2px) !important;
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  border-top-color: rgba(251, 191, 36, 0.75) !important;
+  box-shadow: 
+    0 16px 36px -4px rgba(245, 158, 11, 0.3),
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 0 18px rgba(245, 158, 11, 0.25) !important;
+}
+
+.anser-btn-trigger:active {
+  transform: translateY(0) scale(0.97) !important;
+  transition-duration: 0.08s !important;
+}
+
+/* Nested Icon Chamber - Mathematically Concentric to Outer Capsule */
+.anser-icon-pod {
+  position: relative !important;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 9999px !important;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.22) 0%, rgba(217, 119, 6, 0.3) 100%) !important;
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 4px rgba(0, 0, 0, 0.25) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #fbbf24 !important;
+  flex-shrink: 0 !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease !important;
+}
+
+.anser-btn-trigger:hover .anser-icon-pod {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.35) 0%, rgba(217, 119, 6, 0.45) 100%) !important;
+  border-color: rgba(245, 158, 11, 0.75) !important;
+  transform: scale(1.05) !important;
+}
+
+.anser-icon-svg {
+  width: 11px !important;
+  height: 11px !important;
+  display: block !important;
+  fill: #fbbf24 !important;
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.6)) !important;
+  transition: opacity 0.15s ease !important;
+}
+
+/* Orbital Spinner */
+.anser-spinner {
+  display: none !important;
+  position: absolute !important;
+  inset: -1px !important;
+  border-radius: 9999px !important;
+  border: 2px solid transparent !important;
+  border-top-color: #fbbf24 !important;
+  border-right-color: #f59e0b !important;
+  animation: anserOrbitalSpin 0.75s infinite linear !important;
+}
+
+@keyframes anserOrbitalSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Loading / Busy State */
+.anser-busy .anser-btn-trigger {
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  border-top-color: rgba(245, 158, 11, 0.7) !important;
+  box-shadow: 
+    0 12px 32px -4px rgba(245, 158, 11, 0.25),
+    0 4px 12px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.anser-busy .anser-icon-pod {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+.anser-busy .anser-icon-svg {
+  opacity: 0 !important;
+}
+
+.anser-busy .anser-spinner {
+  display: block !important;
+  border-top-color: #fbbf24 !important;
+  border-right-color: #f59e0b !important;
+}
+
+.anser-busy .anser-label {
+  background: linear-gradient(90deg, #94a3b8 0%, #ffffff 50%, #94a3b8 100%) !important;
+  background-size: 200% auto !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  animation: anserShimmer 1.8s linear infinite !important;
+}
+
+@keyframes anserShimmer {
+  to { background-position: 200% center; }
+}
+
+/* Typography Label */
+.anser-label {
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+  color: #f8fafc !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
+}
+
+/* Tactile Hotkey Keycap */
+.anser-kbd {
+  display: inline-flex !important;
+  align-items: center !important;
+  font-family: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  color: #94a3b8 !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 6px !important;
+  padding: 3px 6px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* Floating Feedback Pill / Notification Toast */
+.anser-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: linear-gradient(180deg, rgba(28, 25, 23, 0.96) 0%, rgba(18, 16, 14, 0.96) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-top-color: rgba(255, 255, 255, 0.25) !important;
+  border-radius: 12px !important;
+  padding: 8px 14px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #fafaf9 !important;
+  box-shadow: 
+    0 16px 36px -4px rgba(0, 0, 0, 0.65),
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 0 16px rgba(245, 158, 11, 0.15) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  max-width: 380px !important;
+  word-break: break-word !important;
+  animation: anserSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  transition: transform 0.15s ease, opacity 0.15s ease !important;
+}
+
+.anser-info:hover {
+  transform: translateY(-1px) scale(1.01) !important;
+}
+
+.anser-info.success {
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  border-top-color: rgba(52, 211, 153, 0.7) !important;
+  box-shadow: 
+    0 16px 36px -4px rgba(0, 0, 0, 0.65),
+    0 0 20px rgba(16, 185, 129, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+.anser-info.error {
+  border-color: rgba(239, 68, 68, 0.45) !important;
+  border-top-color: rgba(239, 68, 68, 0.7) !important;
+  box-shadow: 
+    0 16px 36px -4px rgba(0, 0, 0, 0.65),
+    0 0 20px rgba(239, 68, 68, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  color: #fca5a5 !important;
+}
+
+.anser-info.hidden {
+  display: none !important;
+}
+
+.anser-pill-dot {
+  width: 7px !important;
+  height: 7px !important;
+  border-radius: 9999px !important;
+  background: #10b981 !important;
+  box-shadow: 0 0 8px #10b981 !important;
+  flex-shrink: 0 !important;
+}
+
+.anser-info.error .anser-pill-dot {
+  background: #ef4444 !important;
+  box-shadow: 0 0 8px #ef4444 !important;
+}
+
+@keyframes anserSlideUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(8px) scale(0.96); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+
+/* Option Highlighting (Ambient Emerald Aura) */
+.anser-highlight {
+  box-shadow: 
+    0 0 0 2px #10b981, 
+    0 0 24px rgba(16, 185, 129, 0.4),
+    0 12px 28px -4px rgba(16, 185, 129, 0.25) !important;
+  border-color: #10b981 !important;
+  position: relative !important;
+  animation: anserPulseHighlight 2s infinite ease-in-out !important;
+}
+
+@keyframes anserPulseHighlight {
+  0%, 100% {
+    box-shadow: 0 0 0 2px #10b981, 0 0 20px rgba(16, 185, 129, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 2.5px #34d399, 0 0 32px rgba(16, 185, 129, 0.6);
+  }
+}
+
+/* Gemini Badge attached to Option */
+.anser-badge {
+  position: absolute !important;
+  top: -12px !important;
+  right: 12px !important;
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 3px 10px !important;
+  border-radius: 9999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 
+    0 4px 14px rgba(0, 0, 0, 0.35),
+    0 0 16px rgba(16, 185, 129, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  pointer-events: none !important;
+  z-index: 1000 !important;
+  letter-spacing: 0.02em !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  animation: anserPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.anser-badge-svg {
+  width: 12px !important;
+  height: 12px !important;
+  fill: #ffffff !important;
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.5)) !important;
+}
+
+@keyframes anserPopIn {
+  from { 
+    transform: scale(0.85); 
+    opacity: 0; 
+  }
+  to { 
+    transform: scale(1); 
+    opacity: 1; 
+  }
+}

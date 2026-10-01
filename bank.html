@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anser - Question Bank</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="bank.css">
+  <link rel="icon" type="image/png" href="icons/icon48.png">
+</head>
+<body>
+  <div class="bank-app">
+    <!-- Top Navigation Bar -->
+    <header class="bank-header">
+      <div class="header-container">
+        <div class="header-left">
+          <div class="brand-badge">
+            <div class="logo-gem">
+              <svg class="logo-svg" viewBox="0 0 24 24" fill="none">
+                <defs>
+                  <linearGradient id="gemGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#fef08a"/>
+                    <stop offset="35%" stop-color="#fbbf24"/>
+                    <stop offset="70%" stop-color="#f59e0b"/>
+                    <stop offset="100%" stop-color="#b45309"/>
+                  </linearGradient>
+                </defs>
+                <path d="M12 2L14.4 8.6L21 11L14.4 13.4L12 20L9.6 13.4L3 11L9.6 8.6L12 2Z" fill="url(#gemGrad)"/>
+                <circle cx="12" cy="11" r="2" fill="#ffffff" opacity="0.9"/>
+              </svg>
+            </div>
+            <div class="brand-text">
+              <div class="brand-title-row">
+                <span class="brand-name">Anser</span>
+                <span class="pro-tag">PRO</span>
+                <span class="bank-title">Question Bank</span>
+              </div>
+              <span id="bank-count-pill" class="count-pill">0 questions</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Header Actions -->
+        <div class="header-actions">
+          <!-- Copy Format Selector -->
+          <div class="format-toggle" title="Format to copy">
+            <button id="format-text-btn" class="format-btn active" type="button">Text</button>
+            <button id="format-json-btn" class="format-btn" type="button">JSON</button>
+          </div>
+
+          <!-- Single-Click Copy All Button -->
+          <button id="copy-all-btn" class="btn-primary" type="button" title="Copy all questions and answers">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="7" y="7" width="10" height="10" rx="2"/>
+              <path d="M4 13H3a2 2 0 01-2-2V3a2 2 0 012-2h8a2 2 0 012 2v1"/>
+            </svg>
+            <span id="copy-all-label">Copy All</span>
+          </button>
+
+          <!-- Export JSON File -->
+          <button id="export-json-btn" class="btn-secondary" type="button" title="Download JSON file">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M3 13v3a2 2 0 002 2h10a2 2 0 002-2v-3"/>
+              <polyline points="7 9 10 12 13 9"/>
+              <line x1="10" y1="12" x2="10" y2="2"/>
+            </svg>
+            <span>Export JSON</span>
+          </button>
+
+          <!-- Clear All -->
+          <button id="clear-all-btn" class="btn-danger-ghost" type="button" title="Clear all questions">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M3 5h14M8 5V3a1 1 0 011-1h2a1 1 0 011 1v2M5 5l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12"/>
+            </svg>
+            <span>Clear</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Search & Filter Bar -->
+      <div class="filter-strip">
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="9" r="6"/>
+            <path d="M13.5 13.5L18 18"/>
+          </svg>
+          <input 
+            type="text" 
+            id="search-input" 
+            class="search-input" 
+            placeholder="Search questions, options, or explanations..." 
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="clear-search-btn" class="clear-search-btn hidden" type="button" title="Clear search">✕</button>
+        </div>
+
+        <div class="filter-tags">
+          <button class="filter-tag active" data-filter="all">All</button>
+          <button class="filter-tag" data-filter="dom">Fast DOM</button>
+          <button class="filter-tag" data-filter="vision">Vision</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="bank-content">
+      <div class="content-container">
+        <!-- Question Cards List -->
+        <div id="cards-container" class="cards-grid"></div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="empty-state hidden">
+          <div class="empty-icon-wrap">
+            <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+              <circle cx="12" cy="9" r="2"/>
+              <path d="M12 13v3"/>
+            </svg>
+          </div>
+          <h2 class="empty-title">Your Question Bank is Empty</h2>
+          <p class="empty-desc">
+            Whenever you solve an exam question with Anser (<kbd class="kbd-badge">Alt+Q</kbd>), the question, choices, correct answer, and factual reasoning will automatically be cataloged here.
+          </p>
+        </div>
+
+        <!-- No Search Results -->
+        <div id="no-results" class="no-results hidden">
+          <p class="no-results-text">No matching questions found.</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Toast Feedback Notification -->
+    <div id="toast" class="toast hidden">
+      <span class="toast-dot"></span>
+      <span id="toast-text" class="toast-text">Copied to clipboard!</span>
+    </div>
+  </div>
+
+  <script src="bank.js"></script>
+</body>
+</html>

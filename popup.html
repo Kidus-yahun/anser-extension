@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anser Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="header-brand">
+        <div class="logo-gem">
+          <svg class="logo-svg" viewBox="0 0 24 24" fill="none">
+            <defs>
+              <linearGradient id="gemGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#fef08a"/>
+                <stop offset="35%" stop-color="#fbbf24"/>
+                <stop offset="70%" stop-color="#f59e0b"/>
+                <stop offset="100%" stop-color="#b45309"/>
+              </linearGradient>
+            </defs>
+            <path d="M12 2L14.4 8.6L21 11L14.4 13.4L12 20L9.6 13.4L3 11L9.6 8.6L12 2Z" fill="url(#gemGrad)"/>
+            <circle cx="12" cy="11" r="2" fill="#ffffff" opacity="0.9"/>
+          </svg>
+        </div>
+        <div>
+          <div class="title-row">
+            <h1 class="logo-title">Anser</h1>
+            <span class="version-tag">PRO</span>
+          </div>
+          <p class="logo-sub">AI MCQ Solver</p>
+        </div>
+      </div>
+      <div id="connection-status" class="status-pill disconnected">
+        <span class="status-dot"></span>
+        <span class="status-text">No Key</span>
+      </div>
+    </header>
+
+    <main class="popup-body">
+      <!-- Question Bank Quick Link -->
+      <div id="open-bank-btn" class="bank-link-card" title="Open Question Bank in a new tab" role="button" tabindex="0">
+        <div class="bank-link-left">
+          <div class="bank-link-icon">
+            <svg style="width:16px;height:16px;" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+              <circle cx="12" cy="8" r="1.5"/>
+              <path d="M12 12v3"/>
+            </svg>
+          </div>
+          <div>
+            <div class="bank-link-title">Question Bank</div>
+            <div class="bank-link-sub">Catalog of all solved questions</div>
+          </div>
+        </div>
+        <div class="bank-link-right">
+          <span id="popup-bank-count" class="bank-count-badge">0 saved</span>
+          <svg style="width:14px;height:14px;color:var(--text-muted);" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 3l5 5-5 5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 0. AI Provider Selection -->
+      <section class="settings-card">
+        <div class="card-header-row">
+          <label for="provider-select" class="card-label">
+            AI Provider
+          </label>
+        </div>
+        <div class="select-wrapper">
+          <select id="provider-select" class="styled-select">
+            <option value="gemini">Google Gemini</option>
+            <option value="openai">OpenAI (GPT)</option>
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="openrouter">OpenRouter</option>
+            <option value="groq">Groq</option>
+            <option value="custom">Custom OpenAI-Compatible</option>
+          </select>
+          <div class="select-chevron">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      <!-- Custom Base URL (shown only for 'custom' provider) -->
+      <section id="custom-url-section" class="settings-card" style="display:none;">
+        <div class="card-header-row">
+          <label for="custom-base-url" class="card-label">
+            Base URL
+          </label>
+        </div>
+        <div class="input-chamber">
+          <input
+            type="text"
+            id="custom-base-url"
+            class="chamber-input"
+            placeholder="https://api.example.com/v1"
+            spellcheck="false"
+            autocomplete="off"
+          />
+        </div>
+        <div class="card-micro-hint">
+          <svg class="hint-icon" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 2.5a.75.75 0 01.75.75v4a.75.75 0 01-1.5 0v-4A.75.75 0 018 3.5zm0 8a1 1 0 110-2 1 1 0 010 2z"/>
+          </svg>
+          <span>OpenAI-compatible endpoint (e.g. LM Studio, Ollama, vLLM)</span>
+        </div>
+      </section>
+
+      <!-- 1. API Key Input -->
+      <section class="settings-card">
+        <div class="card-header-row">
+          <label for="api-key-input" class="card-label" id="api-key-label">
+            API Key
+          </label>
+          <a id="get-key-link" href="https://aistudio.google.com/app/apikey" target="_blank" class="label-link" title="Get API Key">
+            Get Key
+            <svg class="link-arrow" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3.5 8.5L8.5 3.5M8.5 3.5H4.5M8.5 3.5V7.5"/>
+            </svg>
+          </a>
+        </div>
+        <div class="input-chamber">
+          <input 
+            type="password" 
+            id="api-key-input" 
+            class="chamber-input" 
+            placeholder="Enter your API key..." 
+            spellcheck="false"
+            autocomplete="off"
+          />
+          <button id="toggle-key-visibility" type="button" class="btn-ghost-icon" title="Toggle Visibility" aria-label="Toggle Key Visibility">
+            <svg id="eye-icon" class="icon-svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M10 4C5.5 4 2 10 2 10s3.5 6 8 6 8-6 8-6-3.5-6-8-6z"/>
+              <circle cx="10" cy="10" r="2.5"/>
+            </svg>
+          </button>
+          <button id="fetch-models-btn" type="button" class="btn-connect" title="Verify Key &amp; Load Models">
+            <span>Connect</span>
+          </button>
+        </div>
+        <p id="key-feedback" class="form-feedback hidden"></p>
+      </section>
+
+      <!-- 2. AI Model Selection -->
+      <section class="settings-card">
+        <div class="card-header-row">
+          <label for="model-select" class="card-label">
+            AI Model
+          </label>
+          <span class="model-badge" id="model-count-hint">Enter key above</span>
+        </div>
+        <div class="select-wrapper">
+          <select id="model-select" class="styled-select" disabled>
+            <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Recommended)</option>
+          </select>
+          <div class="select-chevron">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <div class="card-micro-hint">
+          <svg class="hint-icon" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 2.5a.75.75 0 01.75.75v4a.75.75 0 01-1.5 0v-4A.75.75 0 018 3.5zm0 8a1 1 0 110-2 1 1 0 010 2z"/>
+          </svg>
+          <span>Select the model best suited for your use case and latency needs.</span>
+        </div>
+      </section>
+
+      <!-- 3. Action Mode (Tactile Segmented Control) -->
+      <section class="settings-card">
+        <div class="card-header-row">
+          <span class="card-label">Action Behavior</span>
+        </div>
+        <div class="segmented-control" role="radiogroup">
+          <label class="segment-item">
+            <input type="radio" name="action-type" value="highlight" id="action-highlight" checked>
+            <span class="segment-btn">
+              <svg class="segment-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                <path d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5z"/>
+                <circle cx="10" cy="11" r="2"/>
+              </svg>
+              <span>Highlight Only</span>
+            </span>
+          </label>
+          <label class="segment-item">
+            <input type="radio" name="action-type" value="auto_click" id="action-autoclick">
+            <span class="segment-btn">
+              <svg class="segment-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M11.5 2L4 12h5.5l-1 6 7.5-10h-5.5l1-6z" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Auto-Click</span>
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <!-- 4. Detection Engine (Tactile Segmented Control) -->
+      <section class="settings-card">
+        <div class="card-header-row">
+          <span class="card-label">Detection Engine</span>
+        </div>
+        <div class="segmented-control" role="radiogroup">
+          <label class="segment-item">
+            <input type="radio" name="input-method" value="dom" id="input-dom" checked>
+            <span class="segment-btn">
+              <svg class="segment-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M13 16l4-4-4-4M7 4L3 8l4 4M11 3l-2 14" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Fast DOM <span class="tag-speed">~1.5s</span></span>
+            </span>
+          </label>
+          <label class="segment-item">
+            <input type="radio" name="input-method" value="vision" id="input-vision">
+            <span class="segment-btn">
+              <svg class="segment-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="10" cy="10" r="3"/>
+                <path d="M3 7V5a2 2 0 012-2h2M17 7V5a2 2 0 00-2-2h-2M3 13v2a2 2 0 002 2h2M17 13v2a2 2 0 01-2 2h-2" stroke-linecap="round"/>
+              </svg>
+              <span>Vision Crop <span class="tag-speed">~2.5s</span></span>
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <!-- 5. 3-Model Consensus Toggle -->
+      <section class="settings-card consensus-card">
+        <div class="consensus-row">
+          <div class="consensus-info">
+            <div class="consensus-title-row">
+              <span class="card-label">3-Model Consensus</span>
+              <span class="consensus-pill">100% Verified</span>
+            </div>
+            <p class="consensus-desc">Queries 3 models concurrently with majority voting for rock-solid accuracy.</p>
+          </div>
+          <label class="ios-switch">
+            <input type="checkbox" id="consensus-toggle" checked>
+            <span class="ios-slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- 6. Stealth Mode (Hide Floating Overlay) -->
+      <section class="settings-card">
+        <div class="consensus-row">
+          <div class="consensus-info">
+            <div class="consensus-title-row">
+              <span class="card-label">Stealth Mode</span>
+              <span class="stealth-pill">Alt+Q Only</span>
+            </div>
+            <p class="consensus-desc">Hides the on-screen overlay button. Solves silently and highlights or clicks the answer.</p>
+          </div>
+          <label class="ios-switch">
+            <input type="checkbox" id="stealth-toggle">
+            <span class="ios-slider"></span>
+          </label>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="popup-footer">
+      <div class="hotkey-capsule">
+        <kbd class="kbd-tag">Alt</kbd>
+        <span class="kbd-sep">+</span>
+        <kbd class="kbd-tag">Q</kbd>
+        <span class="kbd-desc">to solve on active page</span>
+      </div>
+      <button id="save-btn" type="button" class="btn-primary">
+        <span id="save-btn-text">Save Preferences</span>
+      </button>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
