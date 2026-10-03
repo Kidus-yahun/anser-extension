@@ -1,175 +1,175 @@
 {
   "Math": {
-    "keywords": ["ሂሳብ", "ማትሪክስ", "ስሌት", "equation", "algebra", "geometry", "calculus", "∫", "√", "π", "sin", "cos", "log"],
-    "systemPrompt": "Expert Ethiopian Grade 9-12 Math teacher. Show calculations step-by-step. Double-check arithmetic. Use proper mathematical notation.",
+    "keywords": ["ሂሳብ", "ማትሪክስ", "ስሌት", "እኩልዮሽ", "ዳርቻ", "ዲተርሚናንት", "equation", "algebra", "geometry", "calculus", "matrix", "determinant", "∫", "√", "π", "sin", "cos", "log", "derivative", "limit", "vector"],
+    "systemPrompt": "You are an expert Ethiopian Grade 9-12 Mathematics teacher strictly following the Ethiopian National Curriculum (EUEE). Show calculations step-by-step in English. Double-check arithmetic and algebraic signs. Map the final answer back to the correct option letter.",
     "fewShot": [
       {
-        "question": "What is the value of x in the equation 2x + 5 = 15?",
+        "question": "የ 2x + 7 = 19 እኩልዮሽ ሲሰላ የ x ዋጋ ስንት ይሆናል?",
         "options": {
-          "A": "5",
-          "B": "10",
-          "C": "15",
-          "D": "20"
-        },
-        "correctAnswer": "A",
-        "reasoning": "Subtract 5 from both sides: 2x = 10. Divide by 2: x = 5."
-      },
-      {
-        "question": "If matrix A = [[1, 2], [3, 4]], what is the determinant of A?",
-        "options": {
-          "A": "10",
-          "B": "-2",
-          "C": "2",
-          "D": "-10"
+          "A": "ሀ. 4",
+          "B": "ለ. 6",
+          "C": "ሐ. 8",
+          "D": "መ. 12"
         },
         "correctAnswer": "B",
-        "reasoning": "The determinant of a 2x2 matrix [[a, b], [c, d]] is ad - bc. For matrix A, (1)(4) - (2)(3) = 4 - 6 = -2."
+        "reasoning": "Step 1: Translate: Solve 2x + 7 = 19 for x. Step 2: 2x = 19 - 7 = 12. Step 3: x = 12 / 2 = 6. Step 4: 6 corresponds to option ለ (B)."
+      },
+      {
+        "question": "ማትሪክስ M = [[3, 1], [4, 2]] ቢሆን፣ የዚህ ማትሪክስ ዲተርሚናንት (|M|) ስንት ነው?",
+        "options": {
+          "A": "ሀ. 2",
+          "B": "ለ. -2",
+          "C": "ሐ. 10",
+          "D": "መ. 5"
+        },
+        "correctAnswer": "A",
+        "reasoning": "Step 1: The determinant of a 2x2 matrix [[a, b], [c, d]] is ad - bc. Step 2: Here, det(M) = (3)(2) - (1)(4) = 6 - 4 = 2. Step 3: 2 corresponds to option ሀ (A)."
       }
     ]
   },
   "Physics": {
-    "keywords": ["ፊዚክስ", "ኃይል", "ፍጥነት", "force", "velocity", "acceleration", "energy", "momentum", "Newton"],
-    "systemPrompt": "Expert Ethiopian Grade 9-12 Physics teacher. Write the formula first, substitute values, include units in every step.",
+    "keywords": ["ፊዚክስ", "ኃይል", "ፍጥነት", "ፍጥንጥነት", "ስራ", "ጉልበት", "መቋቋም", "ቮልቴጅ", "ከረንት", "force", "velocity", "acceleration", "energy", "momentum", "Newton", "resistance", "voltage", "current", "friction", "vector", "scalar"],
+    "systemPrompt": "You are an expert Ethiopian Grade 9-12 Physics teacher following the Ethiopian National Curriculum. Identify constraints and negatives ('ያልሆነው' / NOT). Write the physical formula, substitute values with units, compute in English, and map back to the option letter.",
     "fewShot": [
       {
-        "question": "A car accelerates from rest to 20 m/s in 5 seconds. What is its acceleration?",
+        "question": "የአንድ አካል ፍጥነት በ 5 ሰከንድ ውስጥ ከ 0 m/s ወደ 25 m/s ቢያድግ፣ የአካሉ ፍጥንጥነት (acceleration) ስንት ነው?",
         "options": {
-          "A": "2 m/s²",
-          "B": "4 m/s²",
-          "C": "5 m/s²",
-          "D": "10 m/s²"
+          "A": "ሀ. 2 m/s²",
+          "B": "ለ. 5 m/s²",
+          "C": "ሐ. 10 m/s²",
+          "D": "መ. 25 m/s²"
         },
         "correctAnswer": "B",
-        "reasoning": "Formula: a = (v - u) / t. Substitution: a = (20 m/s - 0 m/s) / 5 s. Result: a = 4 m/s²."
+        "reasoning": "Step 1: Translate: An object accelerates from rest (u = 0) to v = 25 m/s in t = 5 s. Find acceleration. Step 2: Formula a = (v - u) / t = (25 - 0) / 5 = 5 m/s². Step 3: 5 m/s² corresponds to option ለ (B)."
       },
       {
-        "question": "What is the potential energy of a 2 kg object lifted 5 meters above the ground? (Use g = 10 m/s²)",
+        "question": "ከሚከተሉት የፊዚክስ መጠኖች ውስጥ የስካላር (scalar) መጠን የሆነው የትኛው ነው?",
         "options": {
-          "A": "10 J",
-          "B": "50 J",
-          "C": "100 J",
-          "D": "200 J"
+          "A": "ሀ. ኃይል (Force)",
+          "B": "ለ. ፍጥነት (Velocity)",
+          "C": "ሐ. ፍጥንጥነት (Acceleration)",
+          "D": "መ. ስራ (Work)"
         },
-        "correctAnswer": "C",
-        "reasoning": "Formula: PE = mgh. Substitution: PE = 2 kg * 10 m/s² * 5 m. Result: PE = 100 J."
+        "correctAnswer": "D",
+        "reasoning": "Step 1: Translate: Which of the following is a scalar quantity? Step 2: Force, velocity, and acceleration are all vectors with magnitude and direction. Work is a scalar quantity (W = F · d). Step 3: Work corresponds to option መ (D)."
       }
     ]
   },
   "Chemistry": {
-    "keywords": ["ኬሚስትሪ", "ንጥረ ነገር", "ሞለኪውል", "atom", "molecule", "element", "reaction", "pH", "mole"],
-    "systemPrompt": "Expert Ethiopian Grade 9-12 Chemistry teacher. Balance equations. Use correct units. Check oxidation states.",
+    "keywords": ["ኬሚስትሪ", "ንጥረ ነገር", "ሞለኪውል", "አቶም", "ውህድ", "አሲድ", "ቤዝ", "ኦክሲዴሽን", "አፀግብሮት", "መፍትሄ", "atom", "molecule", "element", "reaction", "pH", "mole", "acid", "base", "oxidation", "solution", "equilibrium"],
+    "systemPrompt": "You are an expert Ethiopian Grade 9-12 Chemistry teacher following the Ethiopian National Curriculum. Balance chemical equations, check oxidation numbers, verify molar calculations, and map to the option letter.",
     "fewShot": [
       {
-        "question": "What is the pH of a 0.01 M HCl solution?",
+        "question": "የ 0.01 M HNO₃ (Nitric acid) መፍትሄ pH ዋጋ ስንት ነው?",
         "options": {
-          "A": "1",
-          "B": "2",
-          "C": "3",
-          "D": "4"
+          "A": "ሀ. 1",
+          "B": "ለ. 2",
+          "C": "ሐ. 3",
+          "D": "መ. 12"
         },
         "correctAnswer": "B",
-        "reasoning": "HCl is a strong acid, so [H+] = 0.01 M. pH = -log[H+] = -log(10^-2) = 2."
+        "reasoning": "Step 1: Translate: What is the pH of a 0.01 M HNO3 solution? Step 2: HNO3 is a strong acid, dissociating completely: [H+] = 0.01 M = 10^-2 M. pH = -log[H+] = -log(10^-2) = 2. Step 3: 2 corresponds to option ለ (B)."
       },
       {
-        "question": "In the reaction N2 + 3H2 -> 2NH3, how many moles of NH3 are produced from 2 moles of N2?",
+        "question": "በ KMnO₄ ውህድ ውስጥ የማንጋኒዝ (Mn) ኦክሲዴሽን ቁጥር ስንት ነው?",
         "options": {
-          "A": "2 moles",
-          "B": "3 moles",
-          "C": "4 moles",
-          "D": "6 moles"
+          "A": "ሀ. +2",
+          "B": "ለ. +4",
+          "C": "ሐ. +7",
+          "D": "መ. +6"
         },
         "correctAnswer": "C",
-        "reasoning": "From the balanced equation, 1 mole of N2 produces 2 moles of NH3. Therefore, 2 moles of N2 will produce 2 * 2 = 4 moles of NH3."
+        "reasoning": "Step 1: Translate: What is the oxidation number of Mn in KMnO4? Step 2: Oxidation numbers: K = +1, O = -2 (for 4 atoms: -8). Overall neutral compound: +1 + Mn + 4(-2) = 0 => Mn - 7 = 0 => Mn = +7. Step 3: +7 corresponds to option ሐ (C)."
       }
     ]
   },
   "Biology": {
-    "keywords": ["ባዮሎጂ", "ሴል", "ዲኤንኤ", "cell", "DNA", "organism", "photosynthesis", "mitosis"],
-    "systemPrompt": "Expert Ethiopian Grade 9-12 Biology teacher. Use textbook terminology. Reference Ethiopian curriculum classifications.",
+    "keywords": ["ባዮሎጂ", "ህዋስ", "ሴል", "ዲኤንኤ", "አርኤንኤ", "ሚቶኮንድሪያ", "ክሮሞዞም", "ስነ-ህይወት", "ተክል", "እንስሳ", "ዘረ-መል", "ሆርሞን", "ግሉኮስ", "ደም", "cell", "DNA", "RNA", "organism", "photosynthesis", "mitosis", "meiosis", "enzyme", "heart", "respiration"],
+    "systemPrompt": "You are an expert Ethiopian Grade 9-12 Biology teacher following the Ethiopian National Curriculum (including Ethiopian endemic species like Walia Ibex, Red Fox, and Teff). Apply precise biological and anatomical terminology.",
     "fewShot": [
       {
-        "question": "Which organelle is known as the powerhouse of the cell?",
+        "question": "በኢትዮጵያ ውስጥ ብቻ የሚገኘው (Endemic) እና በሰሜን ተራሮች ብሔራዊ ፓርክ ውስጥ የሚኖረው ብርቅዬ የዱር እንስሳ የትኛው ነው?",
         "options": {
-          "A": "Nucleus",
-          "B": "Ribosome",
-          "C": "Mitochondrion",
-          "D": "Chloroplast"
-        },
-        "correctAnswer": "C",
-        "reasoning": "Mitochondria are responsible for cellular respiration and energy (ATP) production, hence they are called the powerhouse of the cell."
-      },
-      {
-        "question": "In DNA, adenine always pairs with:",
-        "options": {
-          "A": "Thymine",
-          "B": "Cytosine",
-          "C": "Guanine",
-          "D": "Uracil"
+          "A": "ሀ. ዋሊያ አይቤክስ (Walia Ibex)",
+          "B": "ለ. ቀጭኔ (Giraffe)",
+          "C": "ሐ. አንበሳ (Lion)",
+          "D": "መ. አነር (Caracal)"
         },
         "correctAnswer": "A",
-        "reasoning": "According to base pairing rules in DNA, adenine (A) pairs with thymine (T), and cytosine (C) pairs with guanine (G)."
+        "reasoning": "Step 1: Translate: Which animal is endemic to Ethiopia and lives in the Simien Mountains National Park? Step 2: Capra walie (Walia Ibex) is strictly endemic to the Simien Mountains of Ethiopia. Step 3: Walia Ibex corresponds to option ሀ (A)."
+      },
+      {
+        "question": "በህዋስ ውስጥ ፕሮቲን የማመንጨት (protein synthesis) ተግባር የሚያከናውነው ህዋሳዊ አካል የትኛው ነው?",
+        "options": {
+          "A": "ሀ. ኒውክሊየስ (Nucleus)",
+          "B": "ለ. ራይቦዞም (Ribosome)",
+          "C": "ሐ. ላይሶዞም (Lysosome)",
+          "D": "መ. ቫኪዩል (Vacuole)"
+        },
+        "correctAnswer": "B",
+        "reasoning": "Step 1: Translate: Which cellular organelle carries out protein synthesis? Step 2: Ribosomes are the cellular machines responsible for translating mRNA into polypeptide chains (proteins). Step 3: Ribosome corresponds to option ለ (B)."
       }
     ]
   },
   "English": {
-    "keywords": ["English", "grammar", "vocabulary", "tense", "pronoun", "adjective", "adverb", "preposition"],
-    "systemPrompt": "Expert Ethiopian Grade 9-12 English teacher. Apply grammar and vocabulary rules precisely. Consider Ethiopian English curriculum context.",
+    "keywords": ["English", "grammar", "vocabulary", "tense", "pronoun", "adjective", "adverb", "preposition", "conjunction", "synonym", "antonym", "comprehension"],
+    "systemPrompt": "You are an expert Ethiopian Grade 9-12 English teacher preparing students for the Ethiopian University Entrance Examination (EUEE). Strictly apply standard English grammar, conditional clauses, subject-verb agreement, and preposition usage.",
     "fewShot": [
       {
-        "question": "Choose the correct tense: By the time I arrived at the station, the train ___.",
+        "question": "If she ___ harder last year, she would have passed the national examination.",
         "options": {
-          "A": "leaves",
-          "B": "left",
-          "C": "has left",
-          "D": "had left"
+          "A": "ሀ. studies",
+          "B": "ለ. studied",
+          "C": "ሐ. had studied",
+          "D": "መ. has studied"
         },
-        "correctAnswer": "D",
-        "reasoning": "The action of the train leaving happened before another action in the past ('arrived'). This requires the past perfect tense 'had left'."
+        "correctAnswer": "C",
+        "reasoning": "Step 1: This is a Third Conditional sentence referring to an impossible past situation and its past result ('would have passed'). Step 2: The if-clause requires the Past Perfect tense: 'had studied'. Step 3: 'had studied' corresponds to option ሐ (C)."
       },
       {
-        "question": "Select the appropriate preposition: She is very good ___ mathematics.",
+        "question": "The manager congratulated her ___ winning the scholarship award.",
         "options": {
-          "A": "in",
-          "B": "at",
-          "C": "with",
-          "D": "about"
+          "A": "ሀ. in",
+          "B": "ለ. at",
+          "C": "ሐ. on",
+          "D": "መ. for"
         },
-        "correctAnswer": "B",
-        "reasoning": "The correct preposition to use after the adjective 'good' when indicating a skill or ability is 'at'."
+        "correctAnswer": "C",
+        "reasoning": "Step 1: The correct dependent preposition following the verb 'congratulate (someone)' is 'on' (congratulate on something). Step 2: 'on' corresponds to option ሐ (C)."
       }
     ]
   },
   "Aptitude": {
-    "keywords": ["አፕቲቲዩድ", "ብቃት", "aptitude", "logic", "pattern", "sequence", "analogy", "reasoning", "IQ"],
-    "systemPrompt": "Expert logical reasoning and aptitude test specialist. Identify patterns, apply systematic logic. Show pattern reasoning step-by-step.",
+    "keywords": ["አፕቲቲዩድ", "ብቃት", "ቅደም ተከተል", "አናሎጊ", "ሎጂክ", "ምክንያት", "aptitude", "logic", "pattern", "sequence", "analogy", "reasoning", "series"],
+    "systemPrompt": "You are an expert Ethiopian national entrance exam Aptitude & Scholastic Reasoning teacher. Deconstruct logical relationships, numeric patterns, and verbal analogies step-by-step.",
     "fewShot": [
       {
-        "question": "What is the next number in the sequence? 2, 6, 12, 20, 30, ___",
+        "question": "የሚከተለውን የቁጥሮች ቅደም ተከተል የሚያሟላው ቁጥር ስንት ነው? 3, 9, 27, 81, ___",
         "options": {
-          "A": "40",
-          "B": "42",
-          "C": "44",
-          "D": "48"
+          "A": "ሀ. 162",
+          "B": "ለ. 243",
+          "C": "ሐ. 324",
+          "D": "መ. 120"
         },
         "correctAnswer": "B",
-        "reasoning": "Find the differences between terms: 6-2=4, 12-6=6, 20-12=8, 30-20=10. The differences increase by 2 each time. The next difference should be 12. So, 30 + 12 = 42."
+        "reasoning": "Step 1: Identify pattern: Geometric progression where each term is multiplied by 3 (3 * 3 = 9; 9 * 3 = 27; 27 * 3 = 81). Step 2: Next term is 81 * 3 = 243. Step 3: 243 corresponds to option ለ (B)."
       },
       {
-        "question": "Dog is to Puppy as Cat is to ___",
+        "question": "ሀኪም ለሆስፒታል ከሆነ፣ አስተማሪ ለ___ ነው?",
         "options": {
-          "A": "Kitten",
-          "B": "Cub",
-          "C": "Calf",
-          "D": "Foal"
+          "A": "ሀ. ተማሪ",
+          "B": "ለ. መጽሐፍ",
+          "C": "ሐ. ትምህርት ቤት",
+          "D": "መ. ደብተር"
         },
-        "correctAnswer": "A",
-        "reasoning": "The relationship is adult animal to its young. A puppy is a young dog, and a kitten is a young cat."
+        "correctAnswer": "C",
+        "reasoning": "Step 1: Analogy relation: Professional to workplace. A doctor works in a hospital; a teacher works in a school. Step 2: School (ትምህርት ቤት) corresponds to option ሐ (C)."
       }
     ]
   },
   "General": {
     "keywords": [],
-    "systemPrompt": "Expert Ethiopian national exam teacher covering all subjects. Follow Ethiopian curriculum standards.",
+    "systemPrompt": "You are an authoritative, world-class exam solver specializing in the Ethiopian Grade 9-12 National Curriculum (EUEE). Solve with factual precision and map to the option letter.",
     "fewShot": []
   }
 }
