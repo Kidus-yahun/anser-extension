@@ -1,0 +1,175 @@
+{
+  "Math": {
+    "keywords": ["ሂሳብ", "ማትሪክስ", "ስሌት", "equation", "algebra", "geometry", "calculus", "∫", "√", "π", "sin", "cos", "log"],
+    "systemPrompt": "Expert Ethiopian Grade 9-12 Math teacher. Show calculations step-by-step. Double-check arithmetic. Use proper mathematical notation.",
+    "fewShot": [
+      {
+        "question": "What is the value of x in the equation 2x + 5 = 15?",
+        "options": {
+          "A": "5",
+          "B": "10",
+          "C": "15",
+          "D": "20"
+        },
+        "correctAnswer": "A",
+        "reasoning": "Subtract 5 from both sides: 2x = 10. Divide by 2: x = 5."
+      },
+      {
+        "question": "If matrix A = [[1, 2], [3, 4]], what is the determinant of A?",
+        "options": {
+          "A": "10",
+          "B": "-2",
+          "C": "2",
+          "D": "-10"
+        },
+        "correctAnswer": "B",
+        "reasoning": "The determinant of a 2x2 matrix [[a, b], [c, d]] is ad - bc. For matrix A, (1)(4) - (2)(3) = 4 - 6 = -2."
+      }
+    ]
+  },
+  "Physics": {
+    "keywords": ["ፊዚክስ", "ኃይል", "ፍጥነት", "force", "velocity", "acceleration", "energy", "momentum", "Newton"],
+    "systemPrompt": "Expert Ethiopian Grade 9-12 Physics teacher. Write the formula first, substitute values, include units in every step.",
+    "fewShot": [
+      {
+        "question": "A car accelerates from rest to 20 m/s in 5 seconds. What is its acceleration?",
+        "options": {
+          "A": "2 m/s²",
+          "B": "4 m/s²",
+          "C": "5 m/s²",
+          "D": "10 m/s²"
+        },
+        "correctAnswer": "B",
+        "reasoning": "Formula: a = (v - u) / t. Substitution: a = (20 m/s - 0 m/s) / 5 s. Result: a = 4 m/s²."
+      },
+      {
+        "question": "What is the potential energy of a 2 kg object lifted 5 meters above the ground? (Use g = 10 m/s²)",
+        "options": {
+          "A": "10 J",
+          "B": "50 J",
+          "C": "100 J",
+          "D": "200 J"
+        },
+        "correctAnswer": "C",
+        "reasoning": "Formula: PE = mgh. Substitution: PE = 2 kg * 10 m/s² * 5 m. Result: PE = 100 J."
+      }
+    ]
+  },
+  "Chemistry": {
+    "keywords": ["ኬሚስትሪ", "ንጥረ ነገር", "ሞለኪውል", "atom", "molecule", "element", "reaction", "pH", "mole"],
+    "systemPrompt": "Expert Ethiopian Grade 9-12 Chemistry teacher. Balance equations. Use correct units. Check oxidation states.",
+    "fewShot": [
+      {
+        "question": "What is the pH of a 0.01 M HCl solution?",
+        "options": {
+          "A": "1",
+          "B": "2",
+          "C": "3",
+          "D": "4"
+        },
+        "correctAnswer": "B",
+        "reasoning": "HCl is a strong acid, so [H+] = 0.01 M. pH = -log[H+] = -log(10^-2) = 2."
+      },
+      {
+        "question": "In the reaction N2 + 3H2 -> 2NH3, how many moles of NH3 are produced from 2 moles of N2?",
+        "options": {
+          "A": "2 moles",
+          "B": "3 moles",
+          "C": "4 moles",
+          "D": "6 moles"
+        },
+        "correctAnswer": "C",
+        "reasoning": "From the balanced equation, 1 mole of N2 produces 2 moles of NH3. Therefore, 2 moles of N2 will produce 2 * 2 = 4 moles of NH3."
+      }
+    ]
+  },
+  "Biology": {
+    "keywords": ["ባዮሎጂ", "ሴል", "ዲኤንኤ", "cell", "DNA", "organism", "photosynthesis", "mitosis"],
+    "systemPrompt": "Expert Ethiopian Grade 9-12 Biology teacher. Use textbook terminology. Reference Ethiopian curriculum classifications.",
+    "fewShot": [
+      {
+        "question": "Which organelle is known as the powerhouse of the cell?",
+        "options": {
+          "A": "Nucleus",
+          "B": "Ribosome",
+          "C": "Mitochondrion",
+          "D": "Chloroplast"
+        },
+        "correctAnswer": "C",
+        "reasoning": "Mitochondria are responsible for cellular respiration and energy (ATP) production, hence they are called the powerhouse of the cell."
+      },
+      {
+        "question": "In DNA, adenine always pairs with:",
+        "options": {
+          "A": "Thymine",
+          "B": "Cytosine",
+          "C": "Guanine",
+          "D": "Uracil"
+        },
+        "correctAnswer": "A",
+        "reasoning": "According to base pairing rules in DNA, adenine (A) pairs with thymine (T), and cytosine (C) pairs with guanine (G)."
+      }
+    ]
+  },
+  "English": {
+    "keywords": ["English", "grammar", "vocabulary", "tense", "pronoun", "adjective", "adverb", "preposition"],
+    "systemPrompt": "Expert Ethiopian Grade 9-12 English teacher. Apply grammar and vocabulary rules precisely. Consider Ethiopian English curriculum context.",
+    "fewShot": [
+      {
+        "question": "Choose the correct tense: By the time I arrived at the station, the train ___.",
+        "options": {
+          "A": "leaves",
+          "B": "left",
+          "C": "has left",
+          "D": "had left"
+        },
+        "correctAnswer": "D",
+        "reasoning": "The action of the train leaving happened before another action in the past ('arrived'). This requires the past perfect tense 'had left'."
+      },
+      {
+        "question": "Select the appropriate preposition: She is very good ___ mathematics.",
+        "options": {
+          "A": "in",
+          "B": "at",
+          "C": "with",
+          "D": "about"
+        },
+        "correctAnswer": "B",
+        "reasoning": "The correct preposition to use after the adjective 'good' when indicating a skill or ability is 'at'."
+      }
+    ]
+  },
+  "Aptitude": {
+    "keywords": ["አፕቲቲዩድ", "ብቃት", "aptitude", "logic", "pattern", "sequence", "analogy", "reasoning", "IQ"],
+    "systemPrompt": "Expert logical reasoning and aptitude test specialist. Identify patterns, apply systematic logic. Show pattern reasoning step-by-step.",
+    "fewShot": [
+      {
+        "question": "What is the next number in the sequence? 2, 6, 12, 20, 30, ___",
+        "options": {
+          "A": "40",
+          "B": "42",
+          "C": "44",
+          "D": "48"
+        },
+        "correctAnswer": "B",
+        "reasoning": "Find the differences between terms: 6-2=4, 12-6=6, 20-12=8, 30-20=10. The differences increase by 2 each time. The next difference should be 12. So, 30 + 12 = 42."
+      },
+      {
+        "question": "Dog is to Puppy as Cat is to ___",
+        "options": {
+          "A": "Kitten",
+          "B": "Cub",
+          "C": "Calf",
+          "D": "Foal"
+        },
+        "correctAnswer": "A",
+        "reasoning": "The relationship is adult animal to its young. A puppy is a young dog, and a kitten is a young cat."
+      }
+    ]
+  },
+  "General": {
+    "keywords": [],
+    "systemPrompt": "Expert Ethiopian national exam teacher covering all subjects. Follow Ethiopian curriculum standards.",
+    "fewShot": []
+  }
+}

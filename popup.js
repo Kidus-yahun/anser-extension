@@ -62,9 +62,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputDomRadio = document.getElementById("input-dom");
   const inputVisionRadio = document.getElementById("input-vision");
   const consensusToggle = document.getElementById("consensus-toggle");
+  const consensusNSelect = document.getElementById('consensus-n');
+  const subjectSelect = document.getElementById('subject-select');
   const stealthToggle = document.getElementById("stealth-toggle");
   const openBankBtn = document.getElementById("open-bank-btn");
   const popupBankCount = document.getElementById("popup-bank-count");
+  const missCountBadge = document.getElementById('miss-count-badge');
+  const exportMissesBtn = document.getElementById('export-misses-btn');
+  const clearMissesBtn = document.getElementById('clear-misses-btn');
 
   const saveBtn = document.getElementById("save-btn");
 
@@ -141,22 +146,33 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     inputVisionRadio.disabled = !visionSupported;
 
-    // Consensus mode only works with Gemini (uses specific Gemini models)
-    const consensusSupported = provider === "gemini";
-    if (!consensusSupported && consensusToggle.checked) {
-      consensusToggle.checked = false;
-      chrome.storage.local.set({ consensusMode: false });
-    }
-    consensusToggle.disabled = !consensusSupported;
+    // Consensus mode is now supported for all providers
   }
 
   // 1. Load Stored Settings
   chrome.storage.local.get(
-    ["geminiApiKey", "selectedModel", "actionType", "inputMethod", "consensusMode", "stealthMode", "aiProvider", "customBaseUrl"],
+    ["geminiApiKey", "selectedModel", "actionType", "inputMethod", "consensusMode", "consensusN", "subjectOverride", "stealthMode", "aiProvider", "customBaseUrl", "missLog"],
     (data) => {
       const provider = data.aiProvider || "gemini";
       providerSelect.value = provider;
       updateProviderUI(provider);
+
+      if (data.consensusN) {
+        consensusNSelect.value = data.consensusN.toString();
+      } else {
+        consensusNSelect.value = "3";
+      }
+
+      if (data.subjectOverride) {
+        subjectSelect.value = data.subjectOverride;
+      } else {
+        subjectSelect.value = "auto";
+      }
+
+      const misses = data.missLog || [];
+      if (missCountBadge) {
+        missCountBadge.textContent = misses.length === 1 ? "1 miss" : `${misses.length} misses`;
+      }
 
       if (data.customBaseUrl) {
         customBaseUrlInput.value = data.customBaseUrl;
@@ -358,6 +374,45 @@ document.addEventListener("DOMContentLoaded", () => {
     chrome.storage.local.set({ stealthMode: stealthToggle.checked });
   });
 
+  subjectSelect.addEventListener('change', () => {
+    const val = subjectSelect.value;
+    chrome.storage.local.set({ subjectOverride: val === 'auto' ? '' : val });
+    // Also notify the active tab
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]?.id) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'SET_SUBJECT_OVERRIDE', subject: val === 'auto' ? null : val });
+      }
+    });
+  });
+
+  consensusNSelect.addEventListener('change', () => {
+    chrome.storage.local.set({ consensusN: parseInt(consensusNSelect.value, 10) });
+  });
+
+  if (exportMissesBtn) {
+    exportMissesBtn.addEventListener('click', () => {
+      chrome.storage.local.get(['missLog'], (data) => {
+        const misses = data.missLog || [];
+        const blob = new Blob([JSON.stringify(misses, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        chrome.downloads.download({
+          url: url,
+          filename: `anser-miss-log-${new Date().toISOString().slice(0,10)}.json`
+        });
+      });
+    });
+  }
+
+  if (clearMissesBtn) {
+    clearMissesBtn.addEventListener('click', () => {
+      chrome.runtime.sendMessage({ action: "CLEAR_MISS_LOG" }, (response) => {
+        if (missCountBadge) {
+          missCountBadge.textContent = "0 misses";
+        }
+      });
+    });
+  }
+
   // 7. Save Settings with Tactile Feedback
   saveBtn.addEventListener("click", () => {
     const key = apiKeyInput.value.trim();
@@ -365,6 +420,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const actionType = actionAutoClickRadio.checked ? "auto_click" : "highlight";
     const inputMethod = inputVisionRadio.checked ? "vision" : "dom";
     const consensusMode = consensusToggle.checked;
+    const consensusN = parseInt(consensusNSelect.value, 10) || 3;
+    const subjectOverride = subjectSelect.value === 'auto' ? '' : subjectSelect.value;
     const stealthMode = stealthToggle.checked;
     const provider = providerSelect.value;
     const customBaseUrl = customBaseUrlInput?.value?.trim() || "";
@@ -376,6 +433,8 @@ document.addEventListener("DOMContentLoaded", () => {
         actionType: actionType,
         inputMethod: inputMethod,
         consensusMode: consensusMode,
+        consensusN: consensusN,
+        subjectOverride: subjectOverride,
         stealthMode: stealthMode,
         aiProvider: provider,
         customBaseUrl: customBaseUrl

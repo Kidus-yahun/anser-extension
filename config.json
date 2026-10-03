@@ -1,0 +1,9 @@
+{
+  "consensusN": 3,
+  "maxConsensusN": 5,
+  "consensusTemperature": 0.5,
+  "thinkingBudget": 2048,
+  "maxRetries": 2,
+  "rateLimitBackoffMs": 1000,
+  "concurrencyLimit": 3
+}

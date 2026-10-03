@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ethiopian National Exam Portal (Natural Science) - Anser Test Benchmark</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Ethiopic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-body: #0d1117;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c2128;
+      --border-subtle: #30363d;
+      --border-accent: #388bfd;
+      --text-main: #f0f6fc;
+      --text-muted: #8b949e;
+      --text-question: #58a6ff;
+      --color-primary: #238636;
+      --color-primary-hover: #2ea043;
+      --color-accent: #e3b341;
+      --color-correct: #3fb950;
+      --color-wrong: #f85149;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', 'Noto Sans Ethiopic', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation bar */
+    .top-navbar {
+      background: #161b22;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      color: #000;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .test-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .score-badge {
+      background: rgba(56, 139, 253, 0.15);
+      border: 1px solid rgba(56, 139, 253, 0.4);
+      color: #58a6ff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      background: #21262d;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn:hover {
+      background: #30363d;
+      border-color: #8b949e;
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      border-color: rgba(240, 246, 252, 0.1);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--color-primary-hover);
+    }
+
+    /* Main Container */
+    .exam-container {
+      max-width: 860px;
+      width: 100%;
+      margin: 32px auto;
+      padding: 0 16px;
+      flex: 1;
+    }
+
+    /* Portal Meta Banner mimicking real platform */
+    .portal-banner {
+      background: #1f242c;
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .portal-banner-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .portal-tag {
+      background: #238636;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .portal-timer {
+      font-weight: 700;
+      color: var(--color-accent);
+      font-size: 14px;
+    }
+
+    /* Question Card Structure */
+    .quiz-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 28px;
+      margin-bottom: 24px;
+      transition: border-color 0.2s;
+    }
+
+    .quiz-card.active-card {
+      border-color: rgba(56, 139, 253, 0.5);
+      box-shadow: 0 0 24px rgba(56, 139, 253, 0.08);
+    }
+
+    .card-meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .text-question-color {
+      color: var(--text-question);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .subject-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #c9d1d9;
+    }
+
+    .my-content {
+      font-size: 18px;
+      font-weight: 600;
+      color: #ffffff;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    /* Options Stack */
+    .chakra-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .cursor-pointer {
+      cursor: pointer;
+    }
+
+    .option-item {
+      background: #1c2128;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: all 0.15s ease;
+      user-select: none;
+      position: relative;
+    }
+
+    .option-item:hover {
+      background: #22272e;
+      border-color: #58a6ff;
+    }
+
+    .option-item.selected {
+      background: rgba(56, 139, 253, 0.12);
+      border-color: #388bfd;
+    }
+
+    .option-item.is-correct-revealed {
+      border-color: #3fb950 !important;
+      background: rgba(63, 185, 80, 0.1) !important;
+    }
+
+    .radio-circle {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #484f58;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .option-item.selected .radio-circle {
+      border-color: #388bfd;
+      background: #388bfd;
+    }
+
+    .radio-inner-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #fff;
+      display: none;
+    }
+
+    .option-item.selected .radio-inner-dot {
+      display: block;
+    }
+
+    .break-all {
+      word-break: break-word;
+      font-size: 15px;
+      font-weight: 500;
+      color: #e6edf3;
+      flex: 1;
+    }
+
+    /* Explanations & Ground Truth box */
+    .truth-box {
+      margin-top: 18px;
+      padding: 14px 16px;
+      background: #13171f;
+      border-left: 3px solid var(--color-accent);
+      border-radius: 0 8px 8px 0;
+      font-size: 13px;
+      color: #8b949e;
+      display: none;
+    }
+
+    .truth-box.show {
+      display: block;
+    }
+
+    .truth-header {
+      font-weight: 700;
+      color: var(--color-accent);
+      margin-bottom: 4px;
+    }
+
+    /* Navigation footer */
+    .nav-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 24px;
+      padding: 16px 0;
+    }
+
+    /* Instructions Capsule */
+    .instructions-card {
+      background: #161b22;
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .instructions-card h3 {
+      font-size: 14px;
+      color: #58a6ff;
+      margin-bottom: 8px;
+    }
+
+    .instructions-card ul {
+      padding-left: 20px;
+      color: var(--text-muted);
+    }
+
+    .instructions-card li {
+      margin-bottom: 4px;
+    }
+
+    .instructions-card kbd {
+      background: #21262d;
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-family: monospace;
+      color: #f0f6fc;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <header class="top-navbar">
+    <div class="brand-wrap">
+      <div class="brand-logo">A</div>
+      <div>
+        <div class="brand-title">Anser Benchmark Test Portal</div>
+        <div class="brand-sub">Ethiopian Grade 9-12 Natural Science Exam (15 Questions)</div>
+      </div>
+    </div>
+
+    <div class="test-controls">
+      <div class="score-badge" id="live-score">
+        <span>Score:</span>
+        <strong id="correct-count">0</strong> / <span id="solved-count">0</span>
+        <span style="font-size: 11px; opacity: 0.8;" id="accuracy-pct">(0%)</span>
+      </div>
+      <button class="btn" id="toggle-truth-btn">Show Answers</button>
+      <button class="btn" id="toggle-view-mode-btn">Show All 15</button>
+      <button class="btn" id="reset-test-btn">Reset</button>
+    </div>
+  </header>
+
+  <main class="exam-container">
+    
+    <!-- Instructions Card -->
+    <div class="instructions-card">
+      <h3>🚀 How to Test the Improved Anser Model (Target: 15/15)</h3>
+      <ul>
+        <li>Press <kbd>Alt+Q</kbd> (or click the floating <strong>Solve</strong> button) on any question to test.</li>
+        <li>The improved extension will reason in English, consult subject-specific Ethiopian curriculum prompts, vote across 3 calls with self-consistency, and highlight the answer!</li>
+        <li>If Anser selects the right answer, the score will automatically tick green. Try all 15 questions to measure accuracy!</li>
+      </ul>
+    </div>
+
+    <!-- Platform Mock Banner (Tests regex filtering for timer/points) -->
+    <div class="portal-banner">
+      <div class="portal-banner-left">
+        <span class="portal-tag">General Exam 2026</span>
+        <span>ጥያቄዎችን በመመለስ ይሸለሙ • Total time: 40 ሰከንዶች</span>
+      </div>
+      <div class="portal-timer" id="mock-timer">
+        ⏳ 25 ሰከንዶች ይቀራሉ • Question <span id="q-counter">1</span> of 15
+      </div>
+    </div>
+
+    <!-- Questions Container -->
+    <div id="questions-viewport">
+      <!-- Injected via JavaScript below -->
+    </div>
+
+    <!-- Pager Navigation -->
+    <div class="nav-bar" id="single-nav-bar">
+      <button class="btn" id="prev-btn" disabled>&larr; Previous Question</button>
+      <span style="color: var(--text-muted); font-size: 13px;" id="pager-indicator">Question 1 of 15</span>
+      <button class="btn btn-primary" id="next-btn">Next Question &rarr;</button>
+    </div>
+
+  </main>
+
+  <script>
+    // 15 Comprehensive Ethiopian Grade 9-12 Natural Science Exam Questions
+    const QUESTIONS = [
+      {
+        id: "q1",
+        subject: "Physics",
+        points: "1.00 pts",
+        question: "የአንድ አካል ፍጥነት በ 4 ሰከንድ (seconds) ውስጥ ከ 10 m/s ወደ 30 m/s ቢያድግ፣ የአካሉ አማካኝ ፍጥንጥነት (average acceleration) ስንት ነው?",
+        options: [
+          "ሀ. 4 m/s²",
+          "ለ. 5 m/s²",
+          "ሐ. 8 m/s²",
+          "መ. 10 m/s²"
+        ],
+        correctIndex: 1, // B (5 m/s²)
+        explanation: "Formula: a = (v - u) / t = (30 m/s - 10 m/s) / 4 s = 20 / 4 = 5 m/s²."
+      },
+      {
+        id: "q2",
+        subject: "Physics",
+        points: "1.00 pts",
+        question: "ከሚከተሉት የፊዚክስ መጠኖች ውስጥ የቬክተር (vector quantity) መጠን ያልሆነው የትኛው ነው?",
+        options: [
+          "ሀ. ኃይል (Force)",
+          "ለ. ፍጥነት (Velocity)",
+          "ሐ. ስራ (Work)",
+          "መ. ፍጥንጥነት (Acceleration)"
+        ],
+        correctIndex: 2, // C (ስራ / Work is a scalar quantity)
+        explanation: "Work is the scalar dot product of force and displacement (W = F · d), meaning it has magnitude but no directional vector."
+      },
+      {
+        id: "q3",
+        subject: "Chemistry",
+        points: "1.00 pts",
+        question: "የ 0.001 M HCl (Hydrochloric acid) aqueous መፍትሄ pH ዋጋ ስንት ነው?",
+        options: [
+          "ሀ. 1",
+          "ለ. 2",
+          "ሐ. 3",
+          "መ. 4"
+        ],
+        correctIndex: 2, // C (3)
+        explanation: "HCl is a strong monoprotic acid, so [H+] = 0.001 M = 10^-3 M. pH = -log[H+] = -log(10^-3) = 3."
+      },
+      {
+        id: "q4",
+        subject: "Chemistry",
+        points: "1.00 pts",
+        question: "በ H₂SO₄ (Sulfuric acid) ውህድ ውስጥ የሰልፈር (S) ኦክሲዴሽን ቁጥር (oxidation state) ስንት ነው?",
+        options: [
+          "ሀ. +2",
+          "ለ. +4",
+          "ሐ. +6",
+          "መ. -2"
+        ],
+        correctIndex: 2, // C (+6)
+        explanation: "2(+1 for H) + S + 4(-2 for O) = 0 => 2 + S - 8 = 0 => S = +6."
+      },
+      {
+        id: "q5",
+        subject: "Biology",
+        points: "1.00 pts",
+        question: "በህዋስ (cell) ውስጥ የኃይል ምንጭ (ATP) በማመንጨት 'የህዋስ ኃይል ማመንጫ' በመባል የሚታወቀው የትኛው ህዋሳዊ አካል ነው?",
+        options: [
+          "ሀ. ኒውክሊየስ (Nucleus)",
+          "ለ. ራይቦዞም (Ribosome)",
+          "ሐ. ሚቶኮንድሪያ (Mitochondria)",
+          "መ. ላይሶዞም (Lysosome)"
+        ],
+        correctIndex: 2, // C (ሚቶኮንድሪያ)
+        explanation: "Mitochondria generate most of the chemical energy needed by the cell (ATP) via cellular respiration, known as the powerhouse of the cell."
+      },
+      {
+        id: "q6",
+        subject: "Biology",
+        points: "1.00 pts",
+        question: "በዲኤንኤ (DNA) ሞለኪውል ውስጥ አዴኒን (Adenine) ሁልጊዜ ከየትኛው ናይትሮጅናዊ ቤዝ ጋር ይጣመራል?",
+        options: [
+          "ሀ. ታይሚን (Thymine)",
+          "ለ. ሳይቶሲን (Cytosine)",
+          "ሐ. ጉዋኒን (Guanine)",
+          "መ. ዩራሲል (Uracil)"
+        ],
+        correctIndex: 0, // A (ታይሚን)
+        explanation: "Under Watson-Crick base pairing rules in DNA, Adenine (A) always pairs with Thymine (T) via 2 hydrogen bonds."
+      },
+      {
+        id: "q7",
+        subject: "Math",
+        points: "1.00 pts",
+        question: "የ 3x - 7 = 14 እኩልዮሽ ሲሰላ የ x ዋጋ ስንት ይሆናል?",
+        options: [
+          "ሀ. 5",
+          "ለ. 7",
+          "ሐ. 8",
+          "መ. 9"
+        ],
+        correctIndex: 1, // B (7)
+        explanation: "3x - 7 = 14 => 3x = 14 + 7 = 21 => x = 21 / 3 = 7."
+      },
+      {
+        id: "q8",
+        subject: "Math",
+        points: "1.00 pts",
+        question: "የ log₁₀(10,000) ስሌት ትክክለኛ ዋጋ ስንት ነው?",
+        options: [
+          "ሀ. 3",
+          "ለ. 4",
+          "ሐ. 5",
+          "መ. 10"
+        ],
+        correctIndex: 1, // B (4)
+        explanation: "10,000 = 10^4. Therefore, log10(10^4) = 4."
+      },
+      {
+        id: "q9",
+        subject: "English",
+        points: "1.00 pts",
+        question: "Choose the correct verb form: Neither the teacher nor the students ___ present at the school yesterday.",
+        options: [
+          "ሀ. is",
+          "ለ. was",
+          "ሐ. were",
+          "መ. are"
+        ],
+        correctIndex: 2, // C (were)
+        explanation: "With 'neither... nor...', the verb agrees with the subject closer to it ('students', plural) and the tense is past ('yesterday'), so 'were'."
+      },
+      {
+        id: "q10",
+        subject: "English",
+        points: "1.00 pts",
+        question: "Select the appropriate preposition: Dr. Abebe has been teaching at Addis Ababa University ___ 2010.",
+        options: [
+          "ሀ. for",
+          "ለ. since",
+          "ሐ. from",
+          "መ. in"
+        ],
+        correctIndex: 1, // B (since)
+        explanation: "In present perfect continuous tense, 'since' is used to refer to a specific starting point in time (2010)."
+      },
+      {
+        id: "q11",
+        subject: "Aptitude",
+        points: "1.00 pts",
+        question: "የሚከተለውን የቁጥሮች ቅደም ተከተል (sequence) የሚያሟላው የሚቀጥለው ቁጥር ስንት ነው? 2, 6, 18, 54, ___",
+        options: [
+          "ሀ. 108",
+          "ለ. 162",
+          "ሐ. 144",
+          "መ. 216"
+        ],
+        correctIndex: 1, // B (162)
+        explanation: "Each term is multiplied by 3: 2*3=6, 6*3=18, 18*3=54, 54*3=162."
+      },
+      {
+        id: "q12",
+        subject: "Aptitude",
+        points: "1.00 pts",
+        question: "ቀን ለብርሃን ከሆነ፣ ሌሊት ለ___ ነው? (Day is to Light as Night is to ___?)",
+        options: [
+          "ሀ. ጨለማ (Darkness)",
+          "ለ. ጨረቃ (Moon)",
+          "ሐ. ኮከብ (Star)",
+          "መ. እንቅልፍ (Sleep)"
+        ],
+        correctIndex: 0, // A (ጨለማ)
+        explanation: "Analogy based on defining environmental characteristic: Day is characterized by light; night is characterized by darkness."
+      },
+      {
+        id: "q13",
+        subject: "Biology",
+        points: "1.00 pts",
+        question: "በሰው አካል ውስጥ የደም ግፊትን እና የደም ስኳር መጠንን የሚቆጣጠረው እንዲሁም ኢንሱሊን (Insulin) የሚያመነጨው እጢ የትኛው ነው?",
+        options: [
+          "ሀ. ጉበት (Liver)",
+          "ለ. ቆሽት (Pancreas)",
+          "ሐ. ታይሮይድ (Thyroid)",
+          "መ. ኩላሊት (Kidney)"
+        ],
+        correctIndex: 1, // B (ቆሽት / Pancreas)
+        explanation: "The islets of Langerhans in the pancreas produce the hormones insulin and glucagon which regulate blood glucose levels."
+      },
+      {
+        id: "q14",
+        subject: "Physics",
+        points: "1.00 pts",
+        question: "በ 200 V ቮልቴጅ የተገናኘ አንድ የኤሌክትሪክ እቃ በውስጡ 5 A ከረንት (current) ቢያልፍበት፣ የዚህ እቃ የኤሌክትሪክ መቋቋም (resistance) ስንት ኦህም (Ω) ነው?",
+        options: [
+          "ሀ. 20 Ω",
+          "ለ. 40 Ω",
+          "ሐ. 50 Ω",
+          "መ. 1000 Ω"
+        ],
+        correctIndex: 1, // B (40 Ω)
+        explanation: "By Ohm's law: V = I * R => R = V / I = 200 V / 5 A = 40 Ω."
+      },
+      {
+        id: "q15",
+        subject: "Math",
+        points: "1.00 pts",
+        question: "ማትሪክስ A = [[2, 4], [1, 3]] ቢሆን፣ የ A ዲተርሚናንት (Determinant |A|) ስንት ነው?",
+        options: [
+          "ሀ. 2",
+          "ለ. 5",
+          "ሐ. 6",
+          "መ. 10"
+        ],
+        correctIndex: 0, // A (2)
+        explanation: "Determinant of 2x2 matrix [[a, b], [c, d]] is ad - bc = (2 * 3) - (4 * 1) = 6 - 4 = 2."
+      }
+    ];
+
+    let currentQuestionIndex = 0;
+    let showAllMode = false;
+    let showTruthMode = false;
+    let recordedAnswers = new Map(); // questionId -> selectedIndex
+
+    const viewport = document.getElementById("questions-viewport");
+    const prevBtn = document.getElementById("prev-btn");
+    const nextBtn = document.getElementById("next-btn");
+    const qCounter = document.getElementById("q-counter");
+    const pagerIndicator = document.getElementById("pager-indicator");
+    const singleNavBar = document.getElementById("single-nav-bar");
+    const toggleTruthBtn = document.getElementById("toggle-truth-btn");
+    const toggleViewModeBtn = document.getElementById("toggle-view-mode-btn");
+    const resetTestBtn = document.getElementById("reset-test-btn");
+
+    function renderQuestions() {
+      viewport.innerHTML = "";
+
+      const questionsToRender = showAllMode 
+        ? QUESTIONS 
+        : [QUESTIONS[currentQuestionIndex]];
+
+      questionsToRender.forEach((q, idx) => {
+        const actualIndex = showAllMode ? idx : currentQuestionIndex;
+        const card = document.createElement("div");
+        card.className = "react-reveal quiz-card active-card";
+        card.id = `card-${q.id}`;
+        card.setAttribute("data-qid", q.id);
+
+        card.innerHTML = `
+          <div class="card-meta-row">
+            <div class="text-question-color">ጥያቄ ${actualIndex + 1} / Question ${actualIndex + 1} [${q.points}]</div>
+            <span class="subject-pill">${q.subject}</span>
+          </div>
+
+          <div class="my-content" id="question-text">
+            ${q.question}
+          </div>
+
+          <div class="chakra-stack options-stack" role="radiogroup">
+            ${q.options.map((optText, optIdx) => `
+              <div 
+                class="cursor-pointer option-item ${recordedAnswers.get(q.id) === optIdx ? 'selected' : ''}" 
+                role="radio" 
+                tabindex="0"
+                data-opt-index="${optIdx}"
+                data-qid="${q.id}"
+              >
+                <div class="radio-circle">
+                  <div class="radio-inner-dot"></div>
+                </div>
+                <p class="break-all">${optText}</p>
+              </div>
+            `).join("")}
+          </div>
+
+          <div class="truth-box ${showTruthMode ? 'show' : ''}" id="truth-${q.id}">
+            <div class="truth-header">✓ Ground Truth Answer: ${q.options[q.correctIndex]}</div>
+            <div>${q.explanation}</div>
+          </div>
+        `;
+
+        viewport.appendChild(card);
+      });
+
+      // Bind option clicks
+      document.querySelectorAll(".option-item").forEach(item => {
+        item.addEventListener("click", () => {
+          const qid = item.getAttribute("data-qid");
+          const optIdx = parseInt(item.getAttribute("data-opt-index"), 10);
+          selectOption(qid, optIdx);
+        });
+      });
+
+      updateUI();
+    }
+
+    function selectOption(qid, optIdx) {
+      recordedAnswers.set(qid, optIdx);
+      const card = document.getElementById(`card-${qid}`);
+      if (card) {
+        card.querySelectorAll(".option-item").forEach((el, idx) => {
+          el.classList.toggle("selected", idx === optIdx);
+        });
+      }
+      updateScore();
+    }
+
+    function updateScore() {
+      let correct = 0;
+      let solved = recordedAnswers.size;
+
+      recordedAnswers.forEach((selectedIdx, qid) => {
+        const qObj = QUESTIONS.find(q => q.id === qid);
+        if (qObj && selectedIdx === qObj.correctIndex) {
+          correct++;
+        }
+      });
+
+      document.getElementById("correct-count").textContent = correct;
+      document.getElementById("solved-count").textContent = solved;
+      const pct = solved > 0 ? Math.round((correct / solved) * 100) : 0;
+      document.getElementById("accuracy-pct").textContent = `(${pct}%)`;
+
+      const scoreBadge = document.getElementById("live-score");
+      if (correct === 15) {
+        scoreBadge.style.borderColor = "#3fb950";
+        scoreBadge.style.color = "#3fb950";
+      }
+    }
+
+    function updateUI() {
+      qCounter.textContent = currentQuestionIndex + 1;
+      pagerIndicator.textContent = `Question ${currentQuestionIndex + 1} of ${QUESTIONS.length}`;
+
+      prevBtn.disabled = currentQuestionIndex === 0;
+      nextBtn.disabled = currentQuestionIndex === QUESTIONS.length - 1;
+
+      singleNavBar.style.display = showAllMode ? "none" : "flex";
+      toggleViewModeBtn.textContent = showAllMode ? "Single View" : "Show All 15";
+      toggleTruthBtn.textContent = showTruthMode ? "Hide Answers" : "Show Answers";
+    }
+
+    // Observer to detect when Anser extension highlights or clicks an option!
+    const domObserver = new MutationObserver((mutations) => {
+      mutations.forEach(m => {
+        if (m.type === "attributes" && m.attributeName === "class") {
+          const target = m.target;
+          if (target.classList.contains("anser-highlight")) {
+            const qid = target.getAttribute("data-qid");
+            const optIdx = parseInt(target.getAttribute("data-opt-index"), 10);
+            if (qid && !isNaN(optIdx)) {
+              selectOption(qid, optIdx);
+            }
+          }
+        }
+      });
+    });
+
+    domObserver.observe(document.body, {
+      attributes: true,
+      subtree: true,
+      attributeFilter: ["class"]
+    });
+
+    // Pager controls
+    prevBtn.addEventListener("click", () => {
+      if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        renderQuestions();
+      }
+    });
+
+    nextBtn.addEventListener("click", () => {
+      if (currentQuestionIndex < QUESTIONS.length - 1) {
+        currentQuestionIndex++;
+        renderQuestions();
+      }
+    });
+
+    toggleViewModeBtn.addEventListener("click", () => {
+      showAllMode = !showAllMode;
+      renderQuestions();
+    });
+
+    toggleTruthBtn.addEventListener("click", () => {
+      showTruthMode = !showTruthMode;
+      document.querySelectorAll(".truth-box").forEach(box => {
+        box.classList.toggle("show", showTruthMode);
+      });
+      toggleTruthBtn.textContent = showTruthMode ? "Hide Answers" : "Show Answers";
+    });
+
+    resetTestBtn.addEventListener("click", () => {
+      recordedAnswers.clear();
+      document.querySelectorAll(".anser-highlight").forEach(el => {
+        el.classList.remove("anser-highlight");
+        el.querySelector(".anser-badge")?.remove();
+      });
+      renderQuestions();
+      updateScore();
+    });
+
+    // Init
+    renderQuestions();
+  </script>
+</body>
+</html>

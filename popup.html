@@ -234,20 +234,61 @@
         </div>
       </section>
 
-      <!-- 5. 3-Model Consensus Toggle -->
+      <!-- 5. Self-Consistency Voting Toggle -->
       <section class="settings-card consensus-card">
         <div class="consensus-row">
           <div class="consensus-info">
             <div class="consensus-title-row">
-              <span class="card-label">3-Model Consensus</span>
-              <span class="consensus-pill">100% Verified</span>
+              <span class="card-label">Self-Consistency Voting</span>
+              <span class="consensus-pill">Majority Vote</span>
             </div>
-            <p class="consensus-desc">Queries 3 models concurrently with majority voting for rock-solid accuracy.</p>
+            <p class="consensus-desc">Sends the question N times in parallel with diverse reasoning, then picks the majority answer.</p>
           </div>
           <label class="ios-switch">
             <input type="checkbox" id="consensus-toggle" checked>
             <span class="ios-slider"></span>
           </label>
+          <div class="consensus-n-selector" style="display:flex;align-items:center;gap:6px;margin-left:8px;">
+            <label for="consensus-n" style="font-size:11px;color:var(--text-muted);">N=</label>
+            <select id="consensus-n" class="styled-select" style="width:50px;padding:2px 4px;font-size:11px;">
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Subject Override -->
+      <section class="settings-card">
+        <div class="card-header-row">
+          <label for="subject-select" class="card-label">
+            Subject Override
+          </label>
+          <span class="model-badge" id="subject-hint">Auto-detect</span>
+        </div>
+        <div class="select-wrapper">
+          <select id="subject-select" class="styled-select">
+            <option value="auto">Auto-detect from question</option>
+            <option value="math">Mathematics (ሂሳብ)</option>
+            <option value="physics">Physics (ፊዚክስ)</option>
+            <option value="chemistry">Chemistry (ኬሚስትሪ)</option>
+            <option value="biology">Biology (ባዮሎጂ)</option>
+            <option value="english">English</option>
+            <option value="aptitude">Aptitude (አፕቲቲዩድ)</option>
+            <option value="general">General</option>
+          </select>
+          <div class="select-chevron">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <div class="card-micro-hint">
+          <svg class="hint-icon" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 2.5a.75.75 0 01.75.75v4a.75.75 0 01-1.5 0v-4A.75.75 0 018 3.5zm0 8a1 1 0 110-2 1 1 0 010 2z"/>
+          </svg>
+          <span>Override auto-detection for subject-specific expert prompts and few-shot examples.</span>
         </div>
       </section>
 
@@ -265,6 +306,28 @@
             <input type="checkbox" id="stealth-toggle">
             <span class="ios-slider"></span>
           </label>
+        </div>
+      </section>
+
+      <!-- Miss Log -->
+      <section class="settings-card">
+        <div class="card-header-row">
+          <span class="card-label">Miss Log</span>
+          <span class="model-badge" id="miss-count-badge">0 misses</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button id="export-misses-btn" type="button" class="btn-connect" style="flex:1;" title="Export miss log as JSON">
+            <span>Export Misses</span>
+          </button>
+          <button id="clear-misses-btn" type="button" class="btn-connect" style="flex:1;opacity:0.7;" title="Clear all miss records">
+            <span>Clear</span>
+          </button>
+        </div>
+        <div class="card-micro-hint">
+          <svg class="hint-icon" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 2.5a.75.75 0 01.75.75v4a.75.75 0 01-1.5 0v-4A.75.75 0 018 3.5zm0 8a1 1 0 110-2 1 1 0 010 2z"/>
+          </svg>
+          <span>Mark answers as wrong using the button next to highlighted answers. Export to review and improve.</span>
         </div>
       </section>
     </main>

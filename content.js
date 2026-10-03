@@ -147,7 +147,8 @@
   // Clean raw question text and strip platform noise / timers / countdowns
   function cleanQuestionText(raw) {
     if (!raw) return "";
-    let text = raw
+    let text = raw.normalize('NFC')
+      .replace(/[\u200B\u200C\u200D\u200E\u200F\uFEFF\u00AD\u034F\u061C\u180E]/g, '')
       .replace(/\s+/g, " ")
       .replace(/\[\s*(?:\d+(?:\.\d+)?\s*(?:points?|marks?|pts?)|marked\s*out\s*of\s*\d+(?:\.\d+)?)\s*\]/gi, "")
       .replace(/\b(?:Points?|Marks?):\s*\d+(?:\.\d+)?\b/gi, "")
@@ -173,7 +174,8 @@
   // Clean raw option text
   function cleanOptionText(raw) {
     if (!raw) return "";
-    return raw
+    return raw.normalize('NFC')
+      .replace(/[\u200B\u200C\u200D\u200E\u200F\uFEFF\u00AD\u034F\u061C\u180E]/g, '')
       .replace(/\s+/g, " ")
       .replace(/^[ሀለሐመሠረabcdABCD0-9][.)\s\-]+/, "")
       .trim();
@@ -480,7 +482,7 @@
   }
 
   // 4. Highlight or Auto-Click
-  function applyAnswer(targetEl, answer, latencyMs, actionType) {
+  function applyAnswer(targetEl, answer, latencyMs, actionType, payload) {
     // Clear existing highlights
     document.querySelectorAll(".anser-highlight").forEach((el) => {
       el.classList.remove("anser-highlight");
@@ -501,6 +503,44 @@
       </svg>
       <span>AI (${(latencyMs / 1000).toFixed(1)}s${consensusTag})</span>
     `;
+
+    const markWrongBtn = document.createElement("button");
+    markWrongBtn.className = "anser-mark-wrong-btn";
+    markWrongBtn.textContent = "Mark Wrong";
+    markWrongBtn.style.marginLeft = "8px";
+    markWrongBtn.style.fontSize = "0.8em";
+    markWrongBtn.style.cursor = "pointer";
+    markWrongBtn.onclick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const correctLetter = prompt("Enter the correct answer letter (A/B/C/D):");
+      if (correctLetter) {
+        let letterIndex = -1;
+        const upperLetter = correctLetter.toUpperCase().trim();
+        if (upperLetter === 'A') letterIndex = 0;
+        else if (upperLetter === 'B') letterIndex = 1;
+        else if (upperLetter === 'C') letterIndex = 2;
+        else if (upperLetter === 'D') letterIndex = 3;
+
+        const currentQuestionId = payload?.questionId || Date.now().toString();
+        const questionText = payload?.question || 'unknown';
+        const choices = payload?.choices || [];
+
+        chrome.runtime.sendMessage({
+          action: 'LOG_MISS',
+          questionId: currentQuestionId,
+          question: questionText,
+          options: choices,
+          modelAnswer: answer.choice_index,
+          correctAnswer: letterIndex,
+          subject: answer.subject || 'unknown'
+        });
+        markWrongBtn.textContent = '✓ Logged';
+        markWrongBtn.disabled = true;
+      }
+    };
+    badge.appendChild(markWrongBtn);
+
     targetEl.appendChild(badge);
 
     // Scroll element into view smoothly if needed
@@ -542,15 +582,15 @@
     if (floatingWidget) floatingWidget.classList.add("anser-busy");
     if (infoPill) infoPill.classList.add("hidden");
 
-    // 10-second auto-reset watchdog to ensure the extension never locks up
+    // 25-second auto-reset watchdog to ensure the extension never locks up
     clearTimeout(solveWatchdog);
     solveWatchdog = setTimeout(() => {
       if (isSolving) {
-        console.warn("[Anser] Solving timed out after 10s. Resetting state.");
+        console.warn("[Anser] Solving timed out after 25s. Resetting state.");
         resetSolvingState();
         showError("Solving request timed out. Please try again.");
       }
-    }, 10000);
+    }, 25000);
 
     try {
       // Check stored preference for input method (DOM vs Vision)
@@ -588,7 +628,10 @@
           preferredInputMethod: "vision",
           cropArea: cropArea,
           pageUrl: window.location.href,
-          pageTitle: document.title
+          pageTitle: document.title,
+          subjectOverride: window.__anserSubjectOverride || null,
+          question: extracted?.question,
+          choices: extracted?.choices
         };
       } else {
         payload = {
@@ -597,7 +640,8 @@
           question: extracted.question,
           choices: extracted.choices,
           pageUrl: window.location.href,
-          pageTitle: document.title
+          pageTitle: document.title,
+          subjectOverride: window.__anserSubjectOverride || null
         };
       }
 
@@ -614,25 +658,26 @@
         const isVision = methodUsed === "vision" || payload.preferredInputMethod === "vision";
         const latencySec = (latencyMs / 1000).toFixed(1);
         const pillConsensus = result.consensus ? ` (${result.consensus})` : "";
+        const subjectTag = result.subject ? ` [${result.subject}]` : "";
         const answerLabel = formatAnswerLabel(result);
 
         if (isVision) {
           // Vision Crop Mode: cannot highlight or click DOM elements, so a simple notification is the right way
-          showNotification(`✓ ${answerLabel} (${latencySec}s${pillConsensus})`, "success", 6000);
+          showNotification(`✓ ${answerLabel} ${subjectTag} (${latencySec}s${pillConsensus})`, "success", 6000);
         } else {
           // DOM Mode: find and highlight / click target DOM element
           const targetElements = extracted?.elements?.length ? extracted.elements : findCandidateOptionElements();
           const targetEl = findTargetOptionElement(result, targetElements);
 
           if (targetEl) {
-            applyAnswer(targetEl, result, latencyMs, actionType);
+            applyAnswer(targetEl, result, latencyMs, actionType, payload);
             // In non-stealth mode, also show confirmation notification
             if (!isStealth) {
-              showNotification(`✓ ${result.choice_text} (${latencySec}s${pillConsensus})`, "success", 4000);
+              showNotification(`✓ ${result.choice_text} ${subjectTag} (${latencySec}s${pillConsensus})`, "success", 4000);
             }
           } else {
             // Target DOM card not found, fallback to notification
-            showNotification(`✓ ${answerLabel} (${latencySec}s${pillConsensus})`, "success", 5000);
+            showNotification(`✓ ${answerLabel} ${subjectTag} (${latencySec}s${pillConsensus})`, "success", 5000);
           }
         }
       });

@@ -16,6 +16,34 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 
+// ─── Global State & Config ────────────────────────────────────────────────────
+
+let subjectsMap = {};
+let configData = {
+  consensusCount: 3,
+  consensusMax: 5,
+  consensusTemperature: 0.5,
+  concurrencyLimit: 3,
+  maxRetries: 2,
+  thinkingBudget: 1024
+};
+
+async function loadSettings() {
+  try {
+    const subRes = await fetch(chrome.runtime.getURL('subjects.json'));
+    if (subRes.ok) subjectsMap = await subRes.json();
+  } catch (e) {
+    console.warn("Failed to load subjects.json", e);
+  }
+  try {
+    const confRes = await fetch(chrome.runtime.getURL('config.json'));
+    if (confRes.ok) configData = await confRes.json();
+  } catch (e) {
+    console.warn("Failed to load config.json", e);
+  }
+}
+loadSettings();
+
 // ─── Provider Configuration ───────────────────────────────────────────────────
 
 const PROVIDER_ENDPOINTS = {
@@ -72,7 +100,6 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-// Listen for global shortcut commands (Alt+Q)
 chrome.commands.onCommand.addListener((command) => {
   if (command === "solve_question") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -83,7 +110,6 @@ chrome.commands.onCommand.addListener((command) => {
   }
 });
 
-// Handle incoming messages from content scripts or popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "FETCH_MODELS") {
     handleFetchModels(request.apiKey, request.provider, request.customBaseUrl)
@@ -124,32 +150,56 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   }
+
+  if (request.action === "LOG_MISS") {
+    chrome.storage.local.get(["missLog"], (data) => {
+      let log = Array.isArray(data.missLog) ? data.missLog : [];
+      log.unshift({
+        questionId: request.questionId,
+        correctAnswer: request.correctAnswer,
+        question: request.question,
+        options: request.options,
+        model_answer: request.model_answer,
+        subject: request.subject,
+        timestamp: new Date().toISOString()
+      });
+      chrome.storage.local.set({ missLog: log }, () => {
+        sendResponse({ success: true });
+      });
+    });
+    return true;
+  }
+  
+  if (request.action === "GET_MISS_LOG") {
+    chrome.storage.local.get(["missLog"], (data) => {
+      sendResponse({ success: true, log: data.missLog || [] });
+    });
+    return true;
+  }
+  
+  if (request.action === "EXPORT_MISS_LOG") {
+    chrome.storage.local.get(["missLog"], (data) => {
+      sendResponse({ success: true, data: JSON.stringify(data.missLog || []) });
+    });
+    return true;
+  }
+  
+  if (request.action === "CLEAR_MISS_LOG") {
+    chrome.storage.local.set({ missLog: [] }, () => {
+      sendResponse({ success: true });
+    });
+    return true;
+  }
 });
 
-// ─── System Prompt ────────────────────────────────────────────────────────────
+// ─── Prompts and Input Cleaning ───────────────────────────────────────────────
 
-const COGNITIVE_SYSTEM_INSTRUCTION = `You are an authoritative, world-class multiple-choice exam solver with zero error tolerance.
-Your task is to determine the single correct choice with absolute factual precision.
+const BASE_SYSTEM_PROMPT = `(a) Translate the question and each option into English internally.
+(b) Solve the problem in English.
+(c) Map the result back to the original option letter (A, B, C, D, or E). Keep original Amharic option labels/order unchanged.
 
-EXECUTE THIS 4-STEP REASONING PROTOCOL BEFORE SELECTING:
-1. CONSTRAINT & POLARITY AUDIT:
-   - Identify if the question is NEGATIVE or EXCLUSIVE (e.g., "NOT", "EXCEPT", "አይደለም", "ያልሆነው/ያልሆነችው", "የማይካተተው", "የተሳሳተው", "ከ... ውጪ").
-   - Check specified calendar systems: Ethiopian Calendar (ዓ.ም) is ~7-8 years behind Gregorian Calendar (G.C./እ.ኤ.አ).
-   - Check measurement units or directional constraints.
-2. CORE ENTITY & PREDICATE ISOLATION:
-   - Isolate the EXACT subject entity and the precise attribute queried (e.g., "former country name" vs "capital city", "birthplace" vs "burial place").
-3. DISTRACTOR ELIMINATION:
-   - Actively identify and reject plausible "trap" distractors (e.g., associated capitals, neighboring bodies of water, similar-sounding names, adjacent dates).
-4. DECISIVE VERIFICATION:
-   - State the definitive proof of truth in 1 concise sentence (max 25 words).
-   - Output the exact 0-based index and verbatim choice text.
-
-Return ONLY a valid JSON object matching this schema without markdown fences:
-{
-  "reasoning": "<1 concise factual proof sentence>",
-  "choice_index": <0-based integer index of correct option>,
-  "choice_text": "<exact verbatim text of the correct option>"
-}`;
+Provide short step-by-step reasoning.
+End your response with a final line EXACTLY: 'ANSWER: X' (where X is A, B, C, D, or E). Do not output JSON.`;
 
 const VISION_SYSTEM_INSTRUCTION = `You are an authoritative, world-class multiple-choice quiz solver.
 Analyze this quiz screenshot and determine the correct answer with uncompromising accuracy.
@@ -157,16 +207,12 @@ Analyze this quiz screenshot and determine the correct answer with uncompromisin
 Follow this rigorous verification protocol:
 1. FAITHFUL CHARACTER TRANSCRIPTION:
    - Transcribe the Amharic question and all 4 options verbatim, glyph-by-glyph.
-   - Do NOT substitute unfamiliar words or foreign names with common ones based on topic expectations.
 2. CONSTRAINT & NEGATION DETECTION:
-   - Detect if the question contains negative phrasing or exceptions (e.g. "አይደለም", "ያልሆነው/ያልሆነችው", "የማይካተተው", "የተሳሳተው", "NOT", "EXCEPT").
-   - Respect specified calendar systems (Ethiopian ዓ.ም vs Gregorian G.C./እ.ኤ.አ) and measurement units.
+   - Detect if the question contains negative phrasing or exceptions.
 3. DECISIVE FACTUAL VERIFICATION:
    - Validate the fact against verifiable historical, scientific, or geographical truth.
-   - Actively guard against deceptive near-miss distractors (close dates, similar names).
-   - In 1-2 concise sentences, prove why the selected choice is factually correct.
 4. FINAL CONCLUSION:
-   - Conclude with the exact 0-based choice index (0 for ሀ/A, 1 for ለ/B, 2 for ሐ/C, 3 for መ/D) and exact option text.
+   - Conclude with the exact 0-based choice index (0 for ሀ/A, 1 for ለ/B, etc.) and exact option text.
 
 Return ONLY valid JSON without markdown fences:
 {
@@ -177,31 +223,102 @@ Return ONLY valid JSON without markdown fences:
   "choice_text": "<exact text of the chosen correct option>"
 }`;
 
-function buildCognitiveDOMPrompt(question, choices) {
-  return `[QUESTION]
-${question}
+function cleanInput(question, choices) {
+  let q = (question || "").normalize("NFC")
+    .replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+    
+  let c = (choices || []).map(opt => 
+    opt.normalize("NFC")
+       .replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '')
+       .replace(/\s+/g, ' ')
+       .trim()
+  );
 
-[CHOICES]
-${choices.map((c, i) => `${i}) ${c}`).join("\n")}
+  const optRegex = /([A-Ea-e])[\.\)]\s*(.*?)(?=(?:[A-Ea-e][\.\)]\s*)|$)/g;
+  if (c.length === 0) {
+    let match;
+    let newQ = q;
+    let foundOpts = [];
+    while ((match = optRegex.exec(q)) !== null) {
+      if (newQ === q) {
+        newQ = q.substring(0, match.index).trim();
+      }
+      foundOpts.push(match[2].trim());
+    }
+    if (foundOpts.length > 0) {
+      q = newQ;
+      c = foundOpts;
+    }
+  }
 
-Apply the 4-step protocol and return the verified JSON:`;
+  return { question: q, choices: c };
+}
+
+function findSubject(nameOrKey) {
+  if (!nameOrKey) return null;
+  const target = String(nameOrKey).trim().toLowerCase();
+  for (const [key, data] of Object.entries(subjectsMap)) {
+    if (key.toLowerCase() === target) {
+      return { key, data };
+    }
+  }
+  return null;
+}
+
+function detectSubject(questionText) {
+  const qLower = (questionText || "").toLowerCase();
+  for (const [subjKey, subjData] of Object.entries(subjectsMap)) {
+    if (subjData.keywords && subjData.keywords.some(k => qLower.includes(k.toLowerCase()))) {
+      return { key: subjKey, data: subjData };
+    }
+  }
+  const general = findSubject("General") || findSubject("general");
+  return general || { key: "General", data: { systemPrompt: "You are an expert Ethiopian national exam teacher covering all subjects. Follow Ethiopian curriculum standards." } };
+}
+
+function getSystemPrompt(subjectData) {
+  let prompt = subjectData?.systemPrompt || "You are an authoritative, world-class multiple-choice exam solver with zero error tolerance.";
+  return prompt + "\n\n" + BASE_SYSTEM_PROMPT;
+}
+
+function formatFewShotExamples(fewShot) {
+  if (!Array.isArray(fewShot) || fewShot.length === 0) return "";
+  return fewShot.map((ex, idx) => {
+    let optStr = "";
+    if (ex.options && typeof ex.options === "object") {
+      optStr = Object.entries(ex.options).map(([k, v]) => `${k}) ${v}`).join("\n");
+    }
+    return `[EXAMPLE ${idx + 1}]\nQuestion: ${ex.question}\nChoices:\n${optStr}\nReasoning: ${ex.reasoning}\nANSWER: ${ex.correctAnswer}`;
+  }).join("\n\n");
+}
+
+function formatQuestionPrompt(question, choices, subjectData) {
+  let prompt = `[QUESTION]\n${question}\n\n[CHOICES]\n`;
+  const labels = ['A', 'B', 'C', 'D', 'E'];
+  choices.forEach((c, i) => {
+    prompt += `${labels[i]}) ${c}\n`;
+  });
+  
+  const fewShotText = formatFewShotExamples(subjectData?.fewShot);
+  if (fewShotText) {
+    prompt = `[FEW-SHOT EXAMPLES]\n${fewShotText}\n\n` + prompt;
+  }
+  return prompt;
 }
 
 // ─── Provider-Specific API Adapters ───────────────────────────────────────────
 
-/**
- * Build a chat completion request body for OpenAI-compatible APIs
- */
-function buildOpenAITextBody(model, systemPrompt, userPrompt) {
+function buildOpenAITextBody(model, systemPrompt, userPrompt, temperature) {
   return {
     model,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
     ],
-    max_tokens: 300,
-    temperature: 0.0,
-    response_format: { type: "json_object" }
+    max_tokens: 1500,
+    temperature: temperature
   };
 }
 
@@ -226,15 +343,15 @@ function buildOpenAIVisionBody(model, base64Data) {
   };
 }
 
-function buildAnthropicTextBody(model, systemPrompt, userPrompt) {
+function buildAnthropicTextBody(model, systemPrompt, userPrompt, temperature) {
   return {
     model,
     system: systemPrompt,
     messages: [
       { role: "user", content: userPrompt }
     ],
-    max_tokens: 300,
-    temperature: 0.0
+    max_tokens: 1500,
+    temperature: temperature
   };
 }
 
@@ -263,17 +380,26 @@ function buildAnthropicVisionBody(model, base64Data) {
   };
 }
 
-function buildGeminiTextBody(systemPrompt, userPrompt) {
+function buildGeminiTextBody(systemPrompt, userPrompt, temperature, model) {
+  let generationConfig = {
+    maxOutputTokens: 1500,
+    temperature: temperature
+  };
+  
+  if (model.toLowerCase().includes("thinking") || (configData.thinkingBudget && model.toLowerCase().includes("pro"))) {
+    generationConfig.thinkingConfig = {
+      type: "ENABLED",
+      thinkingBudget: configData.thinkingBudget || 1024
+    };
+    generationConfig.temperature = undefined; // Avoid errors with temperature in thinking models
+  }
+
   return {
     system_instruction: {
       parts: [{ text: systemPrompt }]
     },
     contents: [{ parts: [{ text: userPrompt }] }],
-    generationConfig: {
-      responseMimeType: "application/json",
-      maxOutputTokens: 250,
-      temperature: 0.0
-    }
+    generationConfig
   };
 }
 
@@ -300,9 +426,6 @@ function buildGeminiVisionBody(base64Data) {
   };
 }
 
-/**
- * Extract text result from provider-specific API response
- */
 function extractResponseText(provider, data) {
   if (provider === "gemini") {
     if (data.error) throw new Error(data.error.message || "Gemini API error");
@@ -316,17 +439,13 @@ function extractResponseText(provider, data) {
     if (!block?.text) throw new Error("No answer returned by Anthropic");
     return block.text;
   }
-  // OpenAI-compatible (openai, openrouter, groq, custom)
   if (data.error) throw new Error(data.error.message || "API error");
   const text = data.choices?.[0]?.message?.content;
   if (!text) throw new Error("No answer returned by model");
   return text;
 }
 
-/**
- * Generic API call to any provider
- */
-async function callProviderAPI(provider, apiKey, model, systemPrompt, userPrompt, customBaseUrl, timeoutMs = 8000) {
+async function callProviderAPI(provider, apiKey, model, systemPrompt, userPrompt, customBaseUrl, timeoutMs = 15000, temperature = 0.1) {
   const providerConfig = PROVIDER_ENDPOINTS[provider] || PROVIDER_ENDPOINTS.custom;
   const url = provider === "gemini"
     ? providerConfig.chatUrl(apiKey, model)
@@ -338,11 +457,11 @@ async function callProviderAPI(provider, apiKey, model, systemPrompt, userPrompt
 
   let body;
   if (provider === "gemini") {
-    body = buildGeminiTextBody(systemPrompt, userPrompt);
+    body = buildGeminiTextBody(systemPrompt, userPrompt, temperature, model);
   } else if (provider === "anthropic") {
-    body = buildAnthropicTextBody(model, systemPrompt, userPrompt);
+    body = buildAnthropicTextBody(model, systemPrompt, userPrompt, temperature);
   } else {
-    body = buildOpenAITextBody(model, systemPrompt, userPrompt);
+    body = buildOpenAITextBody(model, systemPrompt, userPrompt, temperature);
   }
 
   const res = await fetch(url, {
@@ -356,9 +475,6 @@ async function callProviderAPI(provider, apiKey, model, systemPrompt, userPrompt
   return extractResponseText(provider, data);
 }
 
-/**
- * Vision API call to any provider
- */
 async function callProviderVisionAPI(provider, apiKey, model, base64Data, customBaseUrl, timeoutMs = 10000) {
   const providerConfig = PROVIDER_ENDPOINTS[provider] || PROVIDER_ENDPOINTS.custom;
   const url = provider === "gemini"
@@ -375,7 +491,6 @@ async function callProviderVisionAPI(provider, apiKey, model, base64Data, custom
   } else if (provider === "anthropic") {
     body = buildAnthropicVisionBody(model, base64Data);
   } else {
-    // OpenAI-compatible vision (openai, openrouter, groq, custom)
     body = buildOpenAIVisionBody(model, base64Data);
   }
 
@@ -390,84 +505,114 @@ async function callProviderVisionAPI(provider, apiKey, model, base64Data, custom
   return extractResponseText(provider, data);
 }
 
-// ─── Single Model Query (used for consensus) ─────────────────────────────────
+// ─── Single Model Query & Retry ──────────────────────────────────────────────
 
-async function querySingleModel(modelName, apiKey, userPrompt, timeoutMs = 6000) {
-  const t0 = Date.now();
-  // Consensus mode only uses Gemini models
-  const rawText = await callProviderAPI("gemini", apiKey, modelName, COGNITIVE_SYSTEM_INSTRUCTION, userPrompt, "", timeoutMs);
-  const elapsed = Date.now() - t0;
-  const cleanJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-  const parsed = JSON.parse(cleanJson);
-  return { model: modelName, elapsed, parsed };
+async function querySingleModelWithRetry(modelName, provider, apiKey, systemPrompt, userPrompt, customBaseUrl, timeoutMs, temp) {
+  const maxRetries = configData.maxRetries !== undefined ? configData.maxRetries : 2;
+  let lastError = null;
+  let attemptPrompt = userPrompt;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const rawText = await callProviderAPI(provider, apiKey, modelName, systemPrompt, attemptPrompt, customBaseUrl, timeoutMs, temp);
+      const match = rawText.match(/ANSWER:\s*([A-Ea-e])/i);
+      if (match) {
+        return { text: rawText, answerLetter: match[1].toUpperCase(), error: null };
+      } else {
+        lastError = "Response did not contain 'ANSWER: X'";
+        attemptPrompt = attemptPrompt + "\n\nReminder: You must end your response with ANSWER: X where X is A, B, C, D, or E.";
+      }
+    } catch (err) {
+      if (err.message && err.message.includes("429")) {
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt))); // Exponential backoff
+      }
+      lastError = err.message;
+    }
+  }
+  throw new Error(`Failed after ${maxRetries} retries. Last error: ${lastError}`);
 }
 
-/**
- * 3-Model Parallel Consensus Solver (Gemini only)
- */
-async function solveDOMWithConsensus(question, choices, apiKey, primaryModel) {
-  const promptText = buildCognitiveDOMPrompt(question, choices);
+// ─── Consensus Mode ──────────────────────────────────────────────────────────
 
-  const candidatePool = [
-    primaryModel || "gemini-3.5-flash-lite",
-    "gemini-flash-lite-latest",
-    "gemini-2.5-flash-lite"
-  ];
-  const uniqueModels = Array.from(new Set(candidatePool));
-  if (uniqueModels.length < 3) {
-    if (!uniqueModels.includes("gemini-3.5-flash")) uniqueModels.push("gemini-3.5-flash");
+async function runWithLimit(tasks, limit) {
+  const results = [];
+  const executing = [];
+  for (const task of tasks) {
+    const p = task();
+    results.push(p);
+    const e = p.catch(() => {}).finally(() => executing.splice(executing.indexOf(e), 1));
+    executing.push(e);
+    if (executing.length >= limit) await Promise.race(executing);
   }
+  return Promise.allSettled(results);
+}
 
-  const settled = await Promise.allSettled(
-    uniqueModels.slice(0, 3).map((m) => querySingleModel(m, apiKey, promptText, 5500))
-  );
-
-  const successful = settled
-    .filter((s) => s.status === "fulfilled" && s.value?.parsed && typeof s.value.parsed.choice_index === "number")
-    .map((s) => s.value);
-
+async function solveDOMWithConsensus(question, choices, apiKey, primaryModel, provider, customBaseUrl, subjectData) {
+  const nCalls = Math.min(configData.consensusCount || 3, configData.consensusMax || 5);
+  const temp = configData.consensusTemperature !== undefined ? configData.consensusTemperature : 0.5;
+  const timeoutMs = 12000;
+  
+  const systemPrompt = getSystemPrompt(subjectData);
+  let promptText = formatQuestionPrompt(question, choices, subjectData);
+  
+  const limit = configData.concurrencyLimit || 3;
+  
+  const taskFns = Array.from({ length: nCalls }).map(() => async () => {
+    const t0 = Date.now();
+    const res = await querySingleModelWithRetry(primaryModel, provider, apiKey, systemPrompt, promptText, customBaseUrl, timeoutMs, temp);
+    return { ...res, elapsed: Date.now() - t0, model: primaryModel };
+  });
+  
+  let settled = await runWithLimit(taskFns, limit);
+  let successful = settled.filter(s => s.status === 'fulfilled' && s.value && s.value.answerLetter).map(s => s.value);
+  
   if (successful.length === 0) {
     const errors = settled.map((s) => s.reason?.message || "Failed").join("; ");
     throw new Error(`All parallel consensus models failed: ${errors}`);
   }
-
-  const voteCounts = new Map();
-  successful.forEach((s) => {
-    const idx = s.parsed.choice_index;
-    if (!voteCounts.has(idx)) {
-      voteCounts.set(idx, { count: 0, sample: s });
-    }
-    voteCounts.get(idx).count++;
+  
+  let voteCounts = {};
+  successful.forEach(s => {
+    voteCounts[s.answerLetter] = (voteCounts[s.answerLetter] || 0) + 1;
   });
-
-  let winningIdx = -1;
+  
   let maxVotes = 0;
-  let winningSample = null;
-
-  for (const [idx, data] of voteCounts.entries()) {
-    if (data.count > maxVotes) {
-      maxVotes = data.count;
-      winningIdx = idx;
-      winningSample = data.sample;
+  let candidates = [];
+  for (const [letter, count] of Object.entries(voteCounts)) {
+    if (count > maxVotes) {
+      maxVotes = count;
+      candidates = [letter];
+    } else if (count === maxVotes) {
+      candidates.push(letter);
     }
   }
-
-  const primaryResult = successful.find((s) => s.model === uniqueModels[0]);
-  if (primaryResult && maxVotes === 1 && successful.length > 1) {
-    winningSample = primaryResult;
-    winningIdx = primaryResult.parsed.choice_index;
+  
+  let winningLetter = candidates[0];
+  let winningSample = successful.find(s => s.answerLetter === winningLetter);
+  
+  if (candidates.length > 1) {
+    const verificationPrompt = promptText + "\n\nThere is a disagreement between these options: " + candidates.join(", ") + ". Which of these is correct and why? End with ANSWER: X";
+    try {
+      const tieBreaker = await querySingleModelWithRetry(primaryModel, provider, apiKey, systemPrompt, verificationPrompt, customBaseUrl, timeoutMs, 0.1);
+      winningLetter = tieBreaker.answerLetter;
+      winningSample = tieBreaker;
+    } catch (e) {
+      winningLetter = candidates[0];
+      winningSample = successful.find(s => s.answerLetter === winningLetter);
+    }
   }
-
-  const consensusLabel = `${maxVotes}/${successful.length} consensus`;
-
+  
+  const letterToIndex = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4 };
+  const choiceIndex = letterToIndex[winningLetter] !== undefined ? letterToIndex[winningLetter] : 0;
+  
   return {
-    choice_index: winningIdx,
-    choice_text: winningSample.parsed.choice_text,
-    reasoning: winningSample.parsed.reasoning,
-    consensus: consensusLabel,
+    choice_index: choiceIndex,
+    choice_text: choices[choiceIndex] || "",
+    reasoning: winningSample.text,
+    consensus: `${maxVotes}/${successful.length} consensus`,
     votes: maxVotes,
     totalVoters: successful.length,
-    voters: successful.map((s) => `${s.model} (${s.elapsed}ms)`)
+    voters: successful.map(s => `${s.model} (${s.elapsed}ms) - ${s.answerLetter}`)
   };
 }
 
@@ -475,11 +620,9 @@ async function solveDOMWithConsensus(question, choices, apiKey, primaryModel) {
 
 async function handleFetchModels(apiKey, provider, customBaseUrl) {
   provider = provider || "gemini";
-
   if (!apiKey || typeof apiKey !== "string" || !apiKey.trim()) {
     return { success: false, error: "Please enter your API Key." };
   }
-
   const cleanKey = apiKey.trim();
 
   if (provider === "gemini") {
@@ -489,7 +632,6 @@ async function handleFetchModels(apiKey, provider, customBaseUrl) {
   } else if (provider === "openrouter") {
     return fetchOpenRouterModels(cleanKey);
   } else {
-    // openai, groq, custom — all OpenAI-compatible
     const providerConfig = PROVIDER_ENDPOINTS[provider] || PROVIDER_ENDPOINTS.custom;
     return fetchOpenAICompatibleModels(cleanKey, providerConfig.modelsUrl(cleanKey, customBaseUrl), providerConfig.authHeader(cleanKey));
   }
@@ -498,13 +640,8 @@ async function handleFetchModels(apiKey, provider, customBaseUrl) {
 async function fetchGeminiModels(apiKey) {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
   const data = await res.json();
-
-  if (data.error) {
-    return { success: false, error: data.error.message || "Failed to fetch models" };
-  }
-  if (!data.models) {
-    return { success: false, error: "No models found for this API key" };
-  }
+  if (data.error) return { success: false, error: data.error.message || "Failed to fetch models" };
+  if (!data.models) return { success: false, error: "No models found for this API key" };
 
   const validModels = data.models
     .filter((m) => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
@@ -521,13 +658,10 @@ async function fetchGeminiModels(apiKey) {
     if (!aFlash && bFlash) return 1;
     return a.displayName.localeCompare(b.displayName);
   });
-
   return { success: true, models: validModels };
 }
 
 async function fetchAnthropicModels(apiKey) {
-  // Anthropic's /v1/models endpoint may not be available for all keys;
-  // return a curated list of known models
   try {
     const res = await fetch("https://api.anthropic.com/v1/models", {
       headers: {
@@ -544,9 +678,7 @@ async function fetchAnthropicModels(apiKey) {
       }));
       if (models.length > 0) return { success: true, models };
     }
-  } catch (e) {
-    // Fallback to curated list
-  }
+  } catch (e) {}
 
   return {
     success: true,
@@ -565,33 +697,24 @@ async function fetchOpenRouterModels(apiKey) {
     headers: { Authorization: `Bearer ${apiKey}` }
   });
   const data = await res.json();
-
-  if (data.error) {
-    return { success: false, error: data.error.message || "Failed to fetch models" };
-  }
+  if (data.error) return { success: false, error: data.error.message || "Failed to fetch models" };
 
   const models = (data.data || [])
     .filter((m) => m.id)
-    .slice(0, 100) // Limit for UI
+    .slice(0, 100)
     .map((m) => ({
       id: m.id,
       displayName: m.name || m.id
     }));
 
-  if (models.length === 0) {
-    return { success: false, error: "No models found" };
-  }
-
+  if (models.length === 0) return { success: false, error: "No models found" };
   return { success: true, models };
 }
 
 async function fetchOpenAICompatibleModels(apiKey, url, headers) {
   const res = await fetch(url, { headers: { ...headers, "Content-Type": "application/json" } });
   const data = await res.json();
-
-  if (data.error) {
-    return { success: false, error: data.error.message || "Failed to fetch models" };
-  }
+  if (data.error) return { success: false, error: data.error.message || "Failed to fetch models" };
 
   const models = (data.data || [])
     .filter((m) => m.id)
@@ -601,10 +724,7 @@ async function fetchOpenAICompatibleModels(apiKey, url, headers) {
     }))
     .sort((a, b) => a.id.localeCompare(b.id));
 
-  if (models.length === 0) {
-    return { success: false, error: "No models found for this API key" };
-  }
-
+  if (models.length === 0) return { success: false, error: "No models found for this API key" };
   return { success: true, models };
 }
 
@@ -622,29 +742,22 @@ async function handleSolveQuestion(request, senderTab) {
   ]);
 
   const apiKey = (config.geminiApiKey || "").trim();
-  if (!apiKey) {
-    throw new Error("API Key is missing. Click the Anser extension icon and enter your API Key.");
-  }
+  if (!apiKey) throw new Error("API Key is missing. Click the Anser extension icon and enter your API Key.");
+  
   const provider = config.aiProvider || "gemini";
   const model = config.selectedModel || DEFAULT_MODEL;
   const actionType = config.actionType || "highlight";
   const inputMethod = request.preferredInputMethod || config.inputMethod || "dom";
-  const consensusMode = config.consensusMode !== false && provider === "gemini";
+  const consensusMode = config.consensusMode !== false;
   const customBaseUrl = (config.customBaseUrl || "").trim();
 
   const t0 = Date.now();
 
   if (inputMethod === "vision") {
-    // ── Vision Mode ──────────────────────────────────────────────────────────
     const windowId = senderTab?.windowId || null;
-    const screenshotDataUrl = await chrome.tabs.captureVisibleTab(windowId, {
-      format: "jpeg",
-      quality: 90
-    });
-
+    const screenshotDataUrl = await chrome.tabs.captureVisibleTab(windowId, { format: "jpeg", quality: 90 });
     let base64Data = screenshotDataUrl.replace(/^data:image\/jpeg;base64,/, "");
 
-    // High-resolution tight crop if cropArea is provided
     if (request.cropArea && request.cropArea.width > 50 && request.cropArea.height > 50) {
       try {
         const resBlob = await fetch(screenshotDataUrl);
@@ -687,7 +800,6 @@ async function handleSolveQuestion(request, senderTab) {
 
     const rawText = await callProviderVisionAPI(provider, apiKey, model, base64Data, customBaseUrl);
     const latencyMs = Date.now() - t0;
-
     const cleanJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
     const parsed = JSON.parse(cleanJson);
 
@@ -708,27 +820,37 @@ async function handleSolveQuestion(request, senderTab) {
       latencyMs,
       actionType,
       methodUsed: "vision",
-      modelUsed: model
+      modelUsed: model,
+      subject: "general"
     };
   } else {
-    // ── DOM Text Mode ────────────────────────────────────────────────────────
     const { question, choices } = request;
-    if (!question || !choices || choices.length === 0) {
-      throw new Error("Missing question text or choices");
+    const cleaned = cleanInput(question, choices);
+    
+    const subjectOverride = request.subjectOverride;
+    let subjectData;
+    let subjectName;
+    const matchedOverride = findSubject(subjectOverride);
+    if (matchedOverride) {
+      subjectData = matchedOverride.data;
+      subjectName = matchedOverride.key;
+    } else {
+      const detected = detectSubject(cleaned.question);
+      subjectData = detected.data;
+      subjectName = detected.key;
     }
 
     if (consensusMode) {
-      // 3-Model Parallel Consensus (Gemini only)
-      const consensusResult = await solveDOMWithConsensus(question, choices, apiKey, model);
+      const consensusResult = await solveDOMWithConsensus(cleaned.question, cleaned.choices, apiKey, model, provider, customBaseUrl, subjectData);
       const latencyMs = Date.now() - t0;
 
       await saveToQuestionBank({
-        question: question,
-        choices: choices,
+        question: cleaned.question,
+        choices: cleaned.choices,
         answer_index: consensusResult.choice_index,
         answer_text: consensusResult.choice_text,
         reasoning: consensusResult.reasoning,
-        method: `3-Model Consensus (${consensusResult.consensus})`,
+        method: `Consensus (${consensusResult.consensus})`,
         pageUrl: request.pageUrl,
         pageTitle: request.pageTitle
       });
@@ -739,21 +861,30 @@ async function handleSolveQuestion(request, senderTab) {
         latencyMs,
         actionType,
         methodUsed: "dom_consensus",
-        modelUsed: `3-Model Consensus (${consensusResult.consensus})`
+        modelUsed: `Consensus (${consensusResult.consensus})`,
+        subject: subjectName
       };
     }
 
-    // Single model call via provider adapter
-    const userPrompt = buildCognitiveDOMPrompt(question, choices);
-    const rawText = await callProviderAPI(provider, apiKey, model, COGNITIVE_SYSTEM_INSTRUCTION, userPrompt, customBaseUrl);
+    const systemPrompt = getSystemPrompt(subjectData);
+    let userPrompt = formatQuestionPrompt(cleaned.question, cleaned.choices, subjectData);
+    
+    const timeoutMs = 15000;
+    const res = await querySingleModelWithRetry(model, provider, apiKey, systemPrompt, userPrompt, customBaseUrl, timeoutMs, 0.1);
     const latencyMs = Date.now() - t0;
 
-    const cleanJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-    const parsed = JSON.parse(cleanJson);
+    const letterToIndex = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4 };
+    const choiceIndex = letterToIndex[res.answerLetter] !== undefined ? letterToIndex[res.answerLetter] : 0;
+    
+    const parsed = {
+      choice_index: choiceIndex,
+      choice_text: cleaned.choices[choiceIndex] || "",
+      reasoning: res.text
+    };
 
     await saveToQuestionBank({
-      question: question,
-      choices: choices,
+      question: cleaned.question,
+      choices: cleaned.choices,
       answer_index: parsed.choice_index,
       answer_text: parsed.choice_text,
       reasoning: parsed.reasoning,
@@ -768,7 +899,8 @@ async function handleSolveQuestion(request, senderTab) {
       latencyMs,
       actionType,
       methodUsed: "dom",
-      modelUsed: model
+      modelUsed: model,
+      subject: subjectName
     };
   }
 }
@@ -778,14 +910,12 @@ async function handleSolveQuestion(request, senderTab) {
 async function saveToQuestionBank(entry) {
   try {
     if (!entry || !entry.question) return;
-
     const data = await chrome.storage.local.get(["questionBank"]);
     let bank = Array.isArray(data.questionBank) ? data.questionBank : [];
 
-    const normQ = entry.question.trim().toLowerCase().replace(/\s+/g, " ");
-
+    const normQ = entry.question.trim().toLowerCase().replace(/s+/g, " ");
     const existingIdx = bank.findIndex(
-      (item) => item.question && item.question.trim().toLowerCase().replace(/\s+/g, " ") === normQ
+      (item) => item.question && item.question.trim().toLowerCase().replace(/s+/g, " ") === normQ
     );
 
     const newRecord = {
