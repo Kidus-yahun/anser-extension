@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ethio Exam Portal - EUEE National Benchmark (Anser AI)</title>
+  <title>Ethio Quiz & Exam Portal (ማን ያሸንፋል) - Real Benchmark</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Ethiopic:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -11,9 +11,7 @@
     :root {
       --bg-body: #0a0e14;
       --bg-card: #141922;
-      --bg-card-hover: #1a2230;
       --border-subtle: #242c3d;
-      --border-accent: #388bfd;
       --text-main: #f0f6fc;
       --text-muted: #8b949e;
       --text-question: #58a6ff;
@@ -158,40 +156,12 @@
     .exam-container {
       max-width: 880px;
       width: 100%;
-      margin: 24px auto;
+      margin: 20px auto;
       padding: 0 16px;
       flex: 1;
     }
 
-    /* Subject Filters Bar */
-    .filter-bar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 20px;
-      overflow-x: auto;
-      padding-bottom: 4px;
-    }
-
-    .filter-pill {
-      background: #161c28;
-      border: 1px solid var(--border-subtle);
-      color: var(--text-muted);
-      padding: 5px 12px;
-      border-radius: 16px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.15s;
-    }
-
-    .filter-pill:hover, .filter-pill.active {
-      color: #fff;
-      background: #252f42;
-      border-color: #58a6ff;
-    }
-
-    /* Platform Mock Banner (Tests regex filtering for timer/points) */
+    /* Platform Mock Banner (Simulates real platform noise) */
     .portal-banner {
       background: #141b26;
       border: 1px solid var(--border-subtle);
@@ -399,10 +369,10 @@
       <div class="brand-logo">🇪🇹</div>
       <div>
         <div class="brand-title">
-          <span>Ethio Exam Portal (EUEE Mock)</span>
-          <span class="portal-badge">30 Questions Pool</span>
+          <span>Ethio Quiz & Exam Portal (ማን ያሸንፋል)</span>
+          <span class="portal-badge" id="pool-count-badge">Real Questions Pool</span>
         </div>
-        <div class="brand-sub">Ethiopian University Entrance Examination • Natural Science Stream</div>
+        <div class="brand-sub">Authentic Ethiopian Competition & Exam Questions • Anser Benchmark</div>
       </div>
     </div>
 
@@ -421,31 +391,20 @@
 
   <main class="exam-container">
 
-    <!-- Subject Filters -->
-    <div class="filter-bar">
-      <button class="filter-pill active" data-subject="all">All Subjects (30)</button>
-      <button class="filter-pill" data-subject="Physics">Physics (5)</button>
-      <button class="filter-pill" data-subject="Chemistry">Chemistry (5)</button>
-      <button class="filter-pill" data-subject="Biology">Biology (5)</button>
-      <button class="filter-pill" data-subject="Math">Math (5)</button>
-      <button class="filter-pill" data-subject="English">English (5)</button>
-      <button class="filter-pill" data-subject="Aptitude">Aptitude (5)</button>
-    </div>
-
     <!-- Platform Mock Banner (Simulates real platform noise) -->
     <div class="portal-banner">
       <div class="portal-banner-left">
-        <span class="portal-tag">EUEE 2026</span>
-        <span>ጥያቄዎችን በጥንቃቄ አንብበው ይመልሱ • Total time: 40 ሰከንዶች</span>
+        <span class="portal-tag">ጥያቄዎችን በመመለስ ይሸለሙ</span>
+        <span>ማን ያሸንፋል? • Total time: 40 ሰከንዶች</span>
       </div>
       <div class="portal-timer" id="mock-timer">
-        ⏳ <span id="timer-seconds">35</span> ሰከንዶች ይቀራሉ • Question <span id="q-counter">1</span> of <span id="q-total">15</span>
+        ⏳ <span id="timer-seconds">32</span> ሰከንዶች ይቀራሉ • Question <span id="q-counter">1</span> of <span id="q-total">17</span>
       </div>
     </div>
 
     <div class="pool-summary">
-      <span id="session-label">Session: 15 Questions Selected</span>
-      <span>Press <kbd style="background:#1e2533;padding:2px 6px;border-radius:4px;border:1px solid #333;">Alt+Q</kbd> to solve current question</span>
+      <span id="session-label">Session: Active Ethiopian Exam Questions</span>
+      <span>Press <kbd style="background:#1e2533;padding:2px 6px;border-radius:4px;border:1px solid #333;">Alt+Q</kbd> to solve with Anser</span>
     </div>
 
     <!-- Questions Container -->
@@ -456,299 +415,256 @@
     <!-- Pager Navigation -->
     <div class="nav-bar" id="single-nav-bar">
       <button class="btn" id="prev-btn" disabled>&larr; Previous Question</button>
-      <span style="color: var(--text-muted); font-size: 13px;" id="pager-indicator">Question 1 of 15</span>
+      <span style="color: var(--text-muted); font-size: 13px;" id="pager-indicator">Question 1 of 17</span>
       <button class="btn btn-primary" id="next-btn">Next Question &rarr;</button>
     </div>
 
   </main>
 
   <script>
-    // 30 Authentic Past Exam Questions from Ethiopian National Curriculum (EUEE Grade 9-12)
+    // Authentic Past Exam & Competition Questions from Ethiopian Portals
     const MASTER_QUESTIONS = [
-      // ─── PHYSICS (5) ──────────────────────────────────────────────────────────
       {
-        id: "p1",
-        subject: "Physics",
+        id: "eth_1",
+        subject: "General",
         points: "1.00 pts",
-        question: "የአንድ አካል ፍጥነት በ 4 ሰከንድ (seconds) ውስጥ ከ 10 m/s ወደ 30 m/s ቢያድግ፣ የአካሉ አማካኝ ፍጥንጥነት (average acceleration) ስንት ነው?",
-        options: ["ሀ. 4 m/s²", "ለ. 5 m/s²", "ሐ. 8 m/s²", "መ. 10 m/s²"],
-        correctIndex: 1, // B
-        explanation: "a = (v - u) / t = (30 - 10) / 4 = 20 / 4 = 5 m/s²."
-      },
-      {
-        id: "p2",
-        subject: "Physics",
-        points: "1.00 pts",
-        question: "ከሚከተሉት የፊዚክስ መጠኖች ውስጥ የቬክተር (vector quantity) መጠን ያልሆነው የትኛው ነው?",
-        options: ["ሀ. ኃይል (Force)", "ለ. ፍጥነት (Velocity)", "ሐ. ስራ (Work)", "መ. ፍጥንጥነት (Acceleration)"],
-        correctIndex: 2, // C
-        explanation: "ስራ (Work) ስካላር (scalar) መጠን ሲሆን አቅጣጫ የለውም።"
-      },
-      {
-        id: "p3",
-        subject: "Physics",
-        points: "1.00 pts",
-        question: "በ 220 V ቮልቴጅ የተገናኘ አንድ የኤሌክትሪክ ምድጃ 5.5 A ከረንት (current) ቢወስድ፣ የምድጃው የኤሌክትሪክ መቋቋም (resistance) ስንት ኦህም (Ω) ነው?",
-        options: ["ሀ. 20 Ω", "ለ. 40 Ω", "ሐ. 50 Ω", "መ. 110 Ω"],
-        correctIndex: 1, // B (40)
-        explanation: "By Ohm's Law: R = V / I = 220 V / 5.5 A = 40 Ω."
-      },
-      {
-        id: "p4",
-        subject: "Physics",
-        points: "1.00 pts",
-        question: "አንድ 2 kg ክብደት ያለው ድንጋይ ከ 10 m ከፍታ ላይ ወደ መሬት ቢወድቅ፣ መሬት ከመንካቱ ጥቂት ቀደም ብሎ ያለው የእንቅስቃሴ ኃይል (Kinetic Energy) ስንት ነው? (g = 10 m/s²)",
-        options: ["ሀ. 20 J", "ለ. 100 J", "ሐ. 200 J", "መ. 400 J"],
-        correctIndex: 2, // C (200 J)
-        explanation: "Conservation of energy: KE = PE = mgh = 2 kg * 10 m/s² * 10 m = 200 J."
-      },
-      {
-        id: "p5",
-        subject: "Physics",
-        points: "1.00 pts",
-        question: "ከኒውተን የእንቅስቃሴ ህጎች (Newton's Laws of Motion) ውስጥ 'ለእያንዳንዱ ድርጊት ሁልጊዜ እኩል እና ተቃራኒ ምላሽ አለው' የሚለው የትኛው ህግ ነው?",
-        options: ["ሀ. የመጀመሪያው ህግ (1st Law)", "ለ. ሁለተኛው ህግ (2nd Law)", "ሐ. ሦስተኛው ህግ (3rd Law)", "መ. የስበት ህግ (Law of Gravitation)"],
-        correctIndex: 2, // C (3rd Law)
-        explanation: "Newton's 3rd Law states that for every action, there is an equal and opposite reaction."
-      },
-
-      // ─── CHEMISTRY (5) ────────────────────────────────────────────────────────
-      {
-        id: "c1",
-        subject: "Chemistry",
-        points: "1.00 pts",
-        question: "የ 0.001 M HCl (Hydrochloric acid) aqueous መፍትሄ pH ዋጋ ስንት ነው?",
-        options: ["ሀ. 1", "ለ. 2", "ሐ. 3", "መ. 4"],
-        correctIndex: 2, // C
-        explanation: "HCl is a strong acid: [H+] = 0.001 M = 10^-3 M. pH = -log(10^-3) = 3."
-      },
-      {
-        id: "c2",
-        subject: "Chemistry",
-        points: "1.00 pts",
-        question: "በ H₂SO₄ ውህድ ውስጥ የሰልፈር (S) ኦክሲዴሽን ቁጥር (oxidation number) ስንት ነው?",
-        options: ["ሀ. +2", "ለ. +4", "ሐ. +6", "መ. -2"],
-        correctIndex: 2, // C
-        explanation: "2(+1) + S + 4(-2) = 0 => 2 + S - 8 = 0 => S = +6."
-      },
-      {
-        id: "c3",
-        subject: "Chemistry",
-        points: "1.00 pts",
-        question: "በአሞኒያ (NH₃) ማምረቻ ሂደት (Haber process: N₂ + 3H₂ ⇌ 2NH₃ + Heat) ግፊትን (pressure) መጨመር ሚዛኑን (equilibrium) ወደ የትኛው አቅጣጫ ያዘነብለዋል?",
-        options: ["ሀ. ወደ ግራ (ወደ reactants)", "ለ. ወደ ቀኝ (ወደ products)", "ሐ. ለውጥ አያመጣም", "መ. አፀግብሮቱን ያቆመዋል"],
-        correctIndex: 1, // B (ወደ ቀኝ)
-        explanation: "According to Le Chatelier's Principle, increasing pressure favors the side with fewer gas moles (4 moles gas -> 2 moles gas, i.e. to the right)."
-      },
-      {
-        id: "c4",
-        subject: "Chemistry",
-        points: "1.00 pts",
-        question: "ከሚከተሉት የኦርጋኒክ ውህዶች ውስጥ ያልጠገበ ሃይድሮካርቦን (unsaturated hydrocarbon) የሆነው የትኛው ነው?",
-        options: ["ሀ. ሚቴን (CH₄)", "ለ. ኢቴን (C₂H₆)", "ሐ. ፕሮፔን (C₃H₈)", "መ. ኤቲሊን (C₂H₄)"],
-        correctIndex: 3, // D (Ethene / C2H4)
-        explanation: "Ethylene (C2H4) has a double carbon-carbon bond (alkene), so it is an unsaturated hydrocarbon."
-      },
-      {
-        id: "c5",
-        subject: "Chemistry",
-        points: "1.00 pts",
-        question: "በፔሪዮዲክ ሰንጠረዥ (Periodic Table) ውስጥ በአንድ ረድፍ (Period) ከግራ ወደ ቀኝ ስንሄድ የአቶሚክ ራዲየስ (atomic radius) ምን ይሆናል?",
-        options: ["ሀ. ይቀንሳል (Decreases)", "ለ. ይጨምራል (Increases)", "ሐ. አይቀየርም", "መ. መጀመሪያ ቀንሶ በኋላ ይጨምራል"],
-        correctIndex: 0, // A (Decreases)
-        explanation: "Across a period, nuclear charge increases while shielding remains roughly constant, pulling electrons closer and decreasing atomic radius."
-      },
-
-      // ─── BIOLOGY (5) ──────────────────────────────────────────────────────────
-      {
-        id: "b1",
-        subject: "Biology",
-        points: "1.00 pts",
-        question: "በህዋስ ውስጥ የኃይል ምንጭ (ATP) በማመንጨት 'የህዋስ ኃይል ማመንጫ' በመባል የሚታወቀው የትኛው ህዋሳዊ አካል ነው?",
-        options: ["ሀ. ኒውክሊየስ", "ለ. ራይቦዞም", "ሐ. ሚቶኮንድሪያ", "መ. ላይሶዞም"],
-        correctIndex: 2, // C
-        explanation: "ሚቶኮንድሪያ (Mitochondria) በሴሉላር አተነፋፈስ አማካኝነት ATP ያመነጫል።"
-      },
-      {
-        id: "b2",
-        subject: "Biology",
-        points: "1.00 pts",
-        question: "በዲኤንኤ (DNA) ሞለኪውል ውስጥ አዴኒን (Adenine) ሁልጊዜ ከየትኛው ናይትሮጅናዊ ቤዝ ጋር ይጣመራል?",
-        options: ["ሀ. ታይሚን (Thymine)", "ለ. ሳይቶሲን (Cytosine)", "ሐ. ጉዋኒን (Guanine)", "መ. ዩራሲል (Uracil)"],
+        question: "ማን ያሸንፋል?",
+        options: [
+          "A (ሀ)) ማን ያሸንፋል?",
+          "B (ለ)) ዋናው ሽልማት",
+          "C (ሐ)) ድምጽ ይስጡ",
+          "D (መ)) ይወዳደሩ"
+        ],
         correctIndex: 0, // A
-        explanation: "በዲኤንኤ ውስጥ Adenine (A) ሁልጊዜ ከ Thymine (T) ጋር ይጣመራል።"
+        explanation: "The image shows a promotional quiz banner with the Amharic question 'ማን ያሸንፋል?' at the top."
       },
       {
-        id: "b3",
+        id: "eth_2",
+        subject: "General",
+        points: "1.00 pts",
+        question: "በፓርላማው ውስጥ የጾታ እኩልነትን ያስመዘገበው የትኛው አገር ነው?",
+        options: [
+          "A (ሀ)) ኒውዚላንድ",
+          "B (ለ)) ሩዋንዳ",
+          "C (ሐ)) አይስላንድ",
+          "D (መ)) እና ሐ"
+        ],
+        correctIndex: 1, // B (ሩዋንዳ)
+        explanation: "ሩዋንዳ በፓርላማዋ ከ50% በላይ (እስከ 61%) ሴት አባላት በመያዝ የጾታ እኩልነትን በማስመዝገብ በአለም ቀዳሚዋ አገር ናት።"
+      },
+      {
+        id: "eth_3",
+        subject: "General",
+        points: "1.00 pts",
+        question: "ከተከታዮቹ ሃገራት መካከል የደን ሽፋናቸው 0% ከሆኑ ሃገራት መካከል የምትመደበው የትኛዋ ናት?",
+        options: [
+          "A (ሀ)) ራሺያ",
+          "B (ለ)) ሳን ማሪኖ",
+          "C (ሐ)) ኔፓል",
+          "D (መ)) ሆንግ ኮንግ"
+        ],
+        correctIndex: 1, // B (ሳን ማሪኖ)
+        explanation: "ሳን ማሪኖ (San Marino) ከዓለም የደን ሽፋን የሌላቸው (0% የደን ሽፋን ያላቸው) ሀገራት መካከል አንዷ ናት።"
+      },
+      {
+        id: "eth_4",
+        subject: "General",
+        points: "1.00 pts",
+        question: "ህንድ በአጠቃላይ ምን ያህል ደሴቶችን አሏት›",
+        options: [
+          "A (ሀ)) 182",
+          "B (ለ)) 295",
+          "C (ሐ)) 1,382",
+          "D (መ)) 572"
+        ],
+        correctIndex: 3, // D (572)
+        explanation: "ህንድ በህንድ ውቅያኖስ እና በቤንጋል ባህረ ሰላጤ (አንዳማን እና ኒኮባር ደሴቶችን ጨምሮ) በአጠቃላይ 572 ደሴቶች አሏት።"
+      },
+      {
+        id: "eth_5",
+        subject: "General",
+        points: "1.00 pts",
+        question: "የአይሲቲ መሠረተ ልማትን እና ዲጂታል አገልግሎቶችን በማሳደግ ላይ በሚያተኩረው \"ስማርት ዛምቢያ\" በተባለው ተነሳሽነት የምትታወቀው አፍሪካ ሃገር የትኛዋ ናት?",
+        options: [
+          "A (ሀ)) ዚምባብዌ",
+          "B (ለ)) ማላዊ",
+          "C (ሐ)) ቦትስዋና",
+          "D (መ)) ዛምቢያ"
+        ],
+        correctIndex: 3, // D (ዛምቢያ)
+        explanation: "ስማርት ዛምቢያ (Smart Zambia) ተነሳሽነት በስሙ እንደሚያመለክተው የዛምቢያ ሀገር የዲጂታል ልማት ስትራቴጂ ነው።"
+      },
+      {
+        id: "eth_6",
+        subject: "General",
+        points: "1.00 pts",
+        question: "በአለማችን በጎማ ዛፍ ምርት ቀዳሚ የሆነች ሀገር የቷ ናት?",
+        options: [
+          "A (ሀ)) ኢራቅ",
+          "B (ለ)) ማሌዢያ",
+          "C (ሐ)) ኢንዶኔዥያ",
+          "D (መ)) ታይላንድ"
+        ],
+        correctIndex: 3, // D (ታይላንድ)
+        explanation: "Thailand is the world's leading producer and exporter of natural rubber from rubber trees."
+      },
+      {
+        id: "eth_7",
         subject: "Biology",
         points: "1.00 pts",
-        question: "በኢትዮጵያ ውስጥ ብቻ የሚገኘው ብርቅዬ እንስሳ የሆነው የዋልያ አይቤክስ (Capra walie) ዋነኛ መኖሪያ የሆነው ብሔራዊ ፓርክ የትኛው ነው?",
-        options: ["ሀ. የአዋሽ ብሔራዊ ፓርክ", "ለ. የባሌ ተራሮች ብሔራዊ ፓርክ", "ሐ. የሰሜን ተራሮች ብሔራዊ ፓርክ", "መ. የማጎ ብሔራዊ ፓርክ"],
-        correctIndex: 2, // C (Semien Mountains)
-        explanation: "The Walia Ibex is strictly endemic to the cliffs of the Simien Mountains National Park."
+        question: "ለምግብነት ከሚውለው ክፍሉ አንፃር ልዩ የሆነው ተክል የትኛው ነው ?",
+        options: [
+          "A (ሀ)) ጥንቅሽ",
+          "B (ለ)) ወይን",
+          "C (ሐ)) ዘይቱን",
+          "D (መ)) ሎሚ"
+        ],
+        correctIndex: 0, // A (ጥንቅሽ)
+        explanation: "ጥንቅሽ (beetroot/stem/root) የሚበላው ግንዱ/ሥሩ ሲሆን፤ ወይን፣ ዘይቱን እና ሎሚ የሚበሉት ፍሬዎቻቸው (fruits) ናቸው።"
       },
       {
-        id: "b4",
-        subject: "Biology",
+        id: "eth_8",
+        subject: "Physics",
         points: "1.00 pts",
-        question: "የሰው ልጅ ልብ በውስጡ ኦክስጅን የበዛበትን ንጹህ ደም ወደ መላ ሰውነት የሚረጨው የትኛው የልብ ክፍል ነው?",
-        options: ["ሀ. ቀኝ አትሪየም (Right Atrium)", "ለ. ቀኝ ቬንትሪክል (Right Ventricle)", "ሐ. ግራ አትሪየም (Left Atrium)", "መ. ግራ ቬንትሪክል (Left Ventricle)"],
-        correctIndex: 3, // D (Left Ventricle)
-        explanation: "The left ventricle pumps oxygenated blood through the aorta into systemic circulation."
+        question: "ዲሲ ከረንት ኤሌክትሪክ ሃይልን ሊቆጣጠር የሚችለው የትኛው አካል ነው?",
+        options: [
+          "A (ሀ)) ካፓሲተር",
+          "B (ለ)) ሪዚስተር",
+          "C (ሐ)) ኢንዳክተር",
+          "D (መ)) ትራንስፎርመር"
+        ],
+        correctIndex: 3, // D (ትራንስፎርመር)
+        explanation: "ትራንስፎርመር የሚሰራው በተለዋዋጭ መግነጢሳዊ መስክ (AC) ስለሆነ የዲሲ (DC) ኤሌክትሪክ ሃይልን በቀጥታ መቀየር አይችልም።"
       },
       {
-        id: "b5",
-        subject: "Biology",
+        id: "eth_9",
+        subject: "General",
         points: "1.00 pts",
-        question: "በተክሎች ውስጥ የፎቶሲንተሲስ (photosynthesis) ሂደትን ለማካሄድ እና ብርሃንን ለመሳብ የሚያገለግለው አረንጓዴ ቀለም የያዘው ፒግመንት የትኛው ነው?",
-        options: ["ሀ. ክሎሮፊል (Chlorophyll)", "ለ. ካሮቲን (Carotene)", "ሐ. ሄሞግሎቢን (Hemoglobin)", "መ. ሜላኒን (Melanin)"],
-        correctIndex: 0, // A (Chlorophyll)
-        explanation: "Chlorophyll absorbs light energy (primarily blue and red wavelengths) for photosynthesis."
-      },
-
-      // ─── MATHEMATICS (5) ──────────────────────────────────────────────────────
-      {
-        id: "m1",
-        subject: "Math",
-        points: "1.00 pts",
-        question: "የ 3x - 7 = 14 እኩልዮሽ ሲሰላ የ x ዋጋ ስንት ይሆናል?",
-        options: ["ሀ. 5", "ለ. 7", "ሐ. 8", "መ. 9"],
-        correctIndex: 1, // B (7)
-        explanation: "3x = 14 + 7 = 21 => x = 21 / 3 = 7."
+        question: "የአንድ ህዝብ የነፍስ ወከፍ የውልደት ነጻሬ የ--------- ንጻሬ በመባል ይጠራል፡፡",
+        options: [
+          "A (ሀ)) የህዝብ ቁጥር ዕድገት",
+          "B (ለ)) የህጻናት ሞት",
+          "C (ሐ)) የሞት",
+          "D (መ)) የውልደት"
+        ],
+        correctIndex: 3, // D (የውልደት)
+        explanation: "የአንድ ህዝብ የነፍስ ወከፍ የውልደት ንጻሬ በዕለት ተዕለት የህዝብ ጥናት የውልደት ንጻሬ (Birth rate) በመባል ይታወቃል።"
       },
       {
-        id: "m2",
-        subject: "Math",
+        id: "eth_10",
+        subject: "General",
         points: "1.00 pts",
-        question: "የ log₁₀(10,000) ስሌት ትክክለኛ ዋጋ ስንት ነው?",
-        options: ["ሀ. 3", "ለ. 4", "ሐ. 5", "መ. 10"],
-        correctIndex: 1, // B (4)
-        explanation: "10,000 = 10^4 => log10(10^4) = 4."
+        question: "ብሪያን ዲያቆን ማን ነው?",
+        options: [
+          "A (ሀ)) እግር ኳስ ተጫዋች",
+          "B (ለ)) ደራሲና ፈላስፋ",
+          "C (ሐ)) የፊልም ተዋናይ",
+          "D (መ)) የሐገር መሪ"
+        ],
+        correctIndex: 2, // C (የፊልም ተዋናይ)
+        explanation: "Brian Deacon is best known internationally for playing Jesus in the 1979 film 'Jesus', making him a film actor."
       },
       {
-        id: "m3",
-        subject: "Math",
+        id: "eth_11",
+        subject: "General",
         points: "1.00 pts",
-        question: "ማትሪክስ A = [[2, 4], [1, 3]] ቢሆን፣ የ A ዲተርሚናንት (|A|) ስንት ነው?",
-        options: ["ሀ. 2", "ለ. 5", "ሐ. 6", "መ. 10"],
-        correctIndex: 0, // A (2)
-        explanation: "det(A) = (2)(3) - (4)(1) = 6 - 4 = 2."
+        question: "“መጽሐፈ ሰዋስው ወግስ ወመዝገበ ቃላት ሐዲስ” የሚለው መጽሐፍ ደራሲ ማን ናቸው?",
+        options: [
+          "A (ሀ)) አለቃ ታየ ገ/ማርያም",
+          "B (ለ)) ህሩይ ወልደስላሴ",
+          "C (ሐ)) አለቃ ኪዳነ ወልድ ክፍሌ",
+          "D (መ)) አለቃ ገብረ ሀና"
+        ],
+        correctIndex: 2, // C (አለቃ ኪዳነ ወልድ ክፍሌ)
+        explanation: "አለቃ ኪዳነ ወልድ ክፍሌ 'መጽሐፈ ሰዋስው ወግስ ወመዝገበ ቃላት ሐዲስ' የተሰኘውን ታዋቂ የግዕዝ መዝገበ ቃላት እና ሰዋስው መጽሐፍ ደራሲ ናቸው።"
       },
       {
-        id: "m4",
-        subject: "Math",
+        id: "eth_12",
+        subject: "General",
         points: "1.00 pts",
-        question: "ለማንኛውም ማዕዘን θ (theta)፣ የ sin²(θ) + cos²(θ) ድምር ምንጊዜም ስንት ነው?",
-        options: ["ሀ. 0", "ለ. 1", "ሐ. 2", "መ. -1"],
-        correctIndex: 1, // B (1)
-        explanation: "Fundamental Pythagorean trigonometric identity: sin²θ + cos²θ = 1."
+        question: "በጨረቃ ላይ ለማረፍ 4ኛ ደረጃን የያዘው ሀገር የትኛው ነው?",
+        options: [
+          "A (ሀ)) ደቡብ ኮሪያ",
+          "B (ለ)) ጃፓን",
+          "C (ሐ)) ሕንድ",
+          "D (መ)) ራሽያ"
+        ],
+        correctIndex: 2, // C (ሕንድ)
+        explanation: "ሕንድ (Chandrayaan-3) በ 2023 በጨረቃ ላይ በማረፍ ከአሜሪካ፣ ሶቪየት ህብረት እና ቻይና በመቀጠል 4ኛዋ ሀገር ሆናለች።"
       },
       {
-        id: "m5",
-        subject: "Math",
+        id: "eth_13",
+        subject: "General",
         points: "1.00 pts",
-        question: "የ x² - 5x + 6 = 0 ባለ ሁለትዮሽ እኩልዮሽ (quadratic equation) መፍትሄዎች (roots) የትኞቹ ናቸው?",
-        options: ["ሀ. x = 1 እና x = 6", "ለ. x = 2 እና x = 3", "ሐ. x = -2 እና x = -3", "መ. x = 5 እና x = 6"],
-        correctIndex: 1, // B (2 and 3)
-        explanation: "(x - 2)(x - 3) = 0 => x = 2 or x = 3."
-      },
-
-      // ─── ENGLISH (5) ──────────────────────────────────────────────────────────
-      {
-        id: "e1",
-        subject: "English",
-        points: "1.00 pts",
-        question: "Choose the correct verb form: Neither the teacher nor the students ___ present at the school yesterday.",
-        options: ["ሀ. is", "ለ. was", "ሐ. were", "መ. are"],
-        correctIndex: 2, // C (were)
-        explanation: "Subject closer to verb ('students') is plural past tense ('yesterday') -> were."
+        question: "ልዩ በሆነው ቀይ ልብሳቸው እና በዝላይ ጭፈራቸው የሚታወቁት የማሳይ ዘላን አርብቶ አደሮች በየት ሃገር ውስጥ ይገኛሉ?",
+        options: [
+          "A (ሀ)) ኢትዮጵያ እና ሶማሊያ",
+          "B (ለ)) ናይጄሪያ እና ካሜሩን",
+          "C (ሐ)) ደቡብ አፍሪካ እና ናሚቢያ",
+          "D (መ)) ኬንያ እና ታንዛኒያ"
+        ],
+        correctIndex: 3, // D (ኬንያ እና ታንዛኒያ)
+        explanation: "The Maasai pastoralists inhabit the savannah regions across southern Kenya and northern Tanzania."
       },
       {
-        id: "e2",
-        subject: "English",
+        id: "eth_14",
+        subject: "General",
         points: "1.00 pts",
-        question: "Select the appropriate preposition: Dr. Abebe has been teaching at Addis Ababa University ___ 2010.",
-        options: ["ሀ. for", "ለ. since", "ሐ. from", "መ. in"],
-        correctIndex: 1, // B (since)
-        explanation: "'Since' denotes a specific starting point in past time."
+        question: "በሲንጋፖር ግድያ፣ ሽብርተኝነት እና የአደንዛዥ ዕፅ ዝውውርን ጨምሮ ከ30 በላይ ወንጀሎችን በፈፀመ ወንጀለኛ ላይ የሞት ቅጣት የሚፈጸመው እንዴት ነው ?",
+        options: [
+          "A (ሀ)) ገዳይ መርፌ",
+          "B (ለ)) ከረጅም ከፍታ በማንጠልጠል",
+          "C (ሐ)) የተኩስ ቡድን",
+          "D (መ)) የኤሌክትሪክ ወንበር"
+        ],
+        correctIndex: 1, // B (ከረጅም ከፍታ በማንጠልጠል / Hanging)
+        explanation: "In Singapore, capital punishment is carried out exclusively by hanging (long drop)."
       },
       {
-        id: "e3",
-        subject: "English",
+        id: "eth_15",
+        subject: "Physics",
         points: "1.00 pts",
-        question: "If he had studied hard for the university entrance exam, he ___ accepted into the engineering faculty.",
-        options: ["ሀ. will be", "ለ. would be", "ሐ. would have been", "መ. had been"],
-        correctIndex: 2, // C (would have been)
-        explanation: "Third conditional: If + Past Perfect, would have + Past Participle."
+        question: "ፀሐይ ሥርዓት ውስጥ \"ቀይ ፕላኔት\" በመባል የሚታወቀው ፕላኔት የቱ ነው?",
+        options: [
+          "A (ሀ)) መሬት",
+          "B (ለ)) ጁፒተር",
+          "C (ሐ)) ኡራኔስ",
+          "D (መ)) ማርስ"
+        ],
+        correctIndex: 3, // D (ማርስ)
+        explanation: "ማርስ (Mars) በላዩ ላይ ባለው የብረት ኦክሳይድ (iron oxide/rust) የተነሳ ቀይ መልክ ስላላት 'ቀይ ፕላኔት' ትባላለች።"
       },
       {
-        id: "e4",
-        subject: "English",
+        id: "eth_16",
+        subject: "General",
         points: "1.00 pts",
-        question: "Choose the best phrasal verb: It was raining heavily, so the football referee decided to ___ the match.",
-        options: ["ሀ. call off", "ለ. call on", "ሐ. look after", "መ. give in"],
-        correctIndex: 0, // A (call off)
-        explanation: "'Call off' means to cancel an event."
+        question: "Which of these protocols reside in Layer 3 - Network in the OSI Model?",
+        options: [
+          "A (ሀ)) IP and TCP",
+          "B (ለ)) TCP and IPSec",
+          "C (ሐ)) IP and IPSec",
+          "D (መ)) HTTP and DNS"
+        ],
+        correctIndex: 2, // C (IP and IPSec)
+        explanation: "IP and IPSec operate at Layer 3 (Network Layer) of the OSI model; TCP operates at Layer 4 (Transport)."
       },
       {
-        id: "e5",
-        subject: "English",
+        id: "eth_17",
+        subject: "General",
         points: "1.00 pts",
-        question: "Complete the question tag: You haven't finished your physics laboratory report yet, ___?",
-        options: ["ሀ. did you", "ለ. haven't you", "ሐ. have you", "መ. do you"],
-        correctIndex: 2, // C (have you)
-        explanation: "Negative statement ('haven't finished') takes a positive tag with the same auxiliary ('have you')."
-      },
-
-      // ─── APTITUDE (5) ─────────────────────────────────────────────────────────
-      {
-        id: "a1",
-        subject: "Aptitude",
-        points: "1.00 pts",
-        question: "የሚከተለውን የቁጥሮች ቅደም ተከተል የሚያሟላው የሚቀጥለው ቁጥር ስንት ነው? 2, 6, 18, 54, ___",
-        options: ["ሀ. 108", "ለ. 162", "ሐ. 144", "መ. 216"],
-        correctIndex: 1, // B (162)
-        explanation: "Multiplying by 3 each time: 54 * 3 = 162."
-      },
-      {
-        id: "a2",
-        subject: "Aptitude",
-        points: "1.00 pts",
-        question: "ቀን ለብርሃን ከሆነ፣ ሌሊት ለ___ ነው? (Day is to Light as Night is to ___?)",
-        options: ["ሀ. ጨለማ (Darkness)", "ለ. ጨረቃ (Moon)", "ሐ. ኮከብ (Star)", "መ. እንቅልፍ (Sleep)"],
-        correctIndex: 0, // A
-        explanation: "Analogy based on intrinsic condition: Day brings light; night brings darkness."
-      },
-      {
-        id: "a3",
-        subject: "Aptitude",
-        points: "1.00 pts",
-        question: "የሚከተለውን የቁጥሮች ቅደም ተከተል የሚያሟላው የሚቀጥለው ቁጥር ስንት ነው? 5, 10, 20, 40, 80, ___",
-        options: ["ሀ. 120", "ለ. 140", "ሐ. 160", "መ. 100"],
-        correctIndex: 2, // C (160)
-        explanation: "Each term is doubled (* 2): 80 * 2 = 160."
-      },
-      {
-        id: "a4",
-        subject: "Aptitude",
-        points: "1.00 pts",
-        question: "ከሚከተሉት ቃላት ውስጥ ከተቀሩት ጋር የማይዛመደው (Odd one out) የትኛው ነው?",
-        options: ["ሀ. አዲስ አበባ", "ለ. ናይሮቢ", "ሐ. ካይሮ", "መ. አፍሪካ"],
-        correctIndex: 3, // D (አፍሪካ is a continent, others are capital cities)
-        explanation: "Addis Ababa, Nairobi, and Cairo are capital cities; Africa is a continent."
-      },
-      {
-        id: "a5",
-        subject: "Aptitude",
-        points: "1.00 pts",
-        question: "ሁሉም ወፎች ክንፍ አላቸው። እርግቦች ወፎች ናቸው። ስለዚህ፡",
-        options: ["ሀ. እርግቦች መብረር አይችሉም", "ለ. እርግቦች ክንፍ አላቸው", "ሐ. አንዳንድ እርግቦች ወፍ አይደሉም", "መ. ሁሉም ክንፍ ያላቸው እርግቦች ናቸው"],
-        correctIndex: 1, // B (Deductive syllogism)
-        explanation: "Syllogism: All A have B. C is A. Therefore, C has B (Pigeons have wings)."
+        question: "Which 3 levels in OSI Model are usually implemented in the software within the operating system?",
+        options: [
+          "A (ሀ)) Application, Presentation, Session",
+          "B (ለ)) Data Link, Transport, Application",
+          "C (ሐ)) Transport, Session, Presentation",
+          "D (መ)) Physical, Data Link, Network"
+        ],
+        correctIndex: 2, // C (Transport, Session, Presentation)
+        explanation: "Layers 4 to 6 (Transport, Session, Presentation) are predominantly implemented in OS kernel and network libraries."
       }
     ];
 
-    let currentQuestions = [...MASTER_QUESTIONS.slice(0, 15)]; // Default to first 15
+    let currentQuestions = [...MASTER_QUESTIONS];
     let currentQuestionIndex = 0;
     let showAllMode = false;
     let showTruthMode = false;
@@ -935,30 +851,9 @@
       currentQuestions = shuffled.slice(0, 15);
       currentQuestionIndex = 0;
       recordedAnswers.clear();
-      document.querySelectorAll(".filter-pill").forEach(p => p.classList.remove("active"));
-      document.querySelector('.filter-pill[data-subject="all"]').classList.add("active");
       sessionLabel.textContent = "Session: 🎲 15 Random Questions Picked";
       renderQuestions();
       updateScore();
-    });
-
-    // Subject Filters
-    document.querySelectorAll(".filter-pill").forEach(pill => {
-      pill.addEventListener("click", () => {
-        document.querySelectorAll(".filter-pill").forEach(p => p.classList.remove("active"));
-        pill.classList.add("active");
-        const subj = pill.getAttribute("data-subject");
-        if (subj === "all") {
-          currentQuestions = [...MASTER_QUESTIONS];
-          sessionLabel.textContent = "Session: All 30 Questions Available";
-        } else {
-          currentQuestions = MASTER_QUESTIONS.filter(q => q.subject === subj);
-          sessionLabel.textContent = `Session: Filtered to ${subj} (${currentQuestions.length} Questions)`;
-        }
-        currentQuestionIndex = 0;
-        renderQuestions();
-        updateScore();
-      });
     });
 
     resetTestBtn.addEventListener("click", () => {
@@ -972,7 +867,7 @@
     });
 
     // Animated countdown timer simulation
-    let timeLeft = 35;
+    let timeLeft = 32;
     setInterval(() => {
       timeLeft = timeLeft > 5 ? timeLeft - 1 : 40;
       const el = document.getElementById("timer-seconds");

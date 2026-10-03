@@ -177,7 +177,7 @@
     return raw.normalize('NFC')
       .replace(/[\u200B\u200C\u200D\u200E\u200F\uFEFF\u00AD\u034F\u061C\u180E]/g, '')
       .replace(/\s+/g, " ")
-      .replace(/^[ሀለሐመሠረabcdABCD0-9][.)\s\-]+/, "")
+      .replace(/^([A-Ea-e0-9]\s*(\([ሀለሐመሠረa-zA-Z0-9]\))?|[ሀለሐመሠረa-zA-Z0-9])[\.\)\-\:\s]+/, "")
       .trim();
   }
 

@@ -233,6 +233,7 @@ function cleanInput(question, choices) {
     opt.normalize("NFC")
        .replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '')
        .replace(/\s+/g, ' ')
+       .replace(/^([A-Ea-e0-9]\s*(\([ሀለሐመሠረa-zA-Z0-9]\))?|[ሀለሐመሠረa-zA-Z0-9])[\.\)\-\:\s]+/, "")
        .trim()
   );
 
