@@ -1,9 +1,10 @@
 {
   "consensusN": 3,
-  "maxConsensusN": 5,
-  "consensusTemperature": 0.5,
-  "thinkingBudget": 2048,
-  "maxRetries": 2,
-  "rateLimitBackoffMs": 1000,
-  "concurrencyLimit": 3
+  "maxConsensusN": 3,
+  "consensusTemperature": 0.3,
+  "thinkingBudget": 0,
+  "maxRetries": 1,
+  "rateLimitBackoffMs": 300,
+  "concurrencyLimit": 3,
+  "timeoutMs": 4500
 }

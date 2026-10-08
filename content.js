@@ -582,15 +582,15 @@
     if (floatingWidget) floatingWidget.classList.add("anser-busy");
     if (infoPill) infoPill.classList.add("hidden");
 
-    // 25-second auto-reset watchdog to ensure the extension never locks up
+    // 9-second auto-reset watchdog to ensure answers always complete within 10s limit
     clearTimeout(solveWatchdog);
     solveWatchdog = setTimeout(() => {
       if (isSolving) {
-        console.warn("[Anser] Solving timed out after 25s. Resetting state.");
+        console.warn("[Anser] Solving timed out after 9s. Resetting state.");
         resetSolvingState();
-        showError("Solving request timed out. Please try again.");
+        showError("Solving request timed out (<9s). Please try again.");
       }
-    }, 25000);
+    }, 9000);
 
     try {
       // Check stored preference for input method (DOM vs Vision)

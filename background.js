@@ -194,12 +194,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // ─── Prompts and Input Cleaning ───────────────────────────────────────────────
 
-const BASE_SYSTEM_PROMPT = `(a) Translate the question and each option into English internally.
-(b) Solve the problem in English.
-(c) Map the result back to the original option letter (A, B, C, D, or E). Keep original Amharic option labels/order unchanged.
+const BASE_SYSTEM_PROMPT = `(a) Internally translate question & choices to English.
+(b) Solve with strict factual accuracy.
+(c) Map back to the original option letter (A, B, C, D, or E). Keep original option order.
 
-Provide short step-by-step reasoning.
-End your response with a final line EXACTLY: 'ANSWER: X' (where X is A, B, C, D, or E). Do not output JSON.`;
+State your proof in 1 concise sentence (under 25 words).
+End with the final line EXACTLY: 'ANSWER: X' where X is A, B, C, D, or E. Do not output JSON.`;
 
 const VISION_SYSTEM_INSTRUCTION = `You are an authoritative, world-class multiple-choice quiz solver.
 Analyze this quiz screenshot and determine the correct answer with uncompromising accuracy.
@@ -318,7 +318,7 @@ function buildOpenAITextBody(model, systemPrompt, userPrompt, temperature) {
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
     ],
-    max_tokens: 1500,
+    max_tokens: 200,
     temperature: temperature
   };
 }
@@ -338,7 +338,7 @@ function buildOpenAIVisionBody(model, base64Data) {
         ]
       }
     ],
-    max_tokens: 800,
+    max_tokens: 500,
     temperature: 0.0,
     response_format: { type: "json_object" }
   };
@@ -351,7 +351,7 @@ function buildAnthropicTextBody(model, systemPrompt, userPrompt, temperature) {
     messages: [
       { role: "user", content: userPrompt }
     ],
-    max_tokens: 1500,
+    max_tokens: 200,
     temperature: temperature
   };
 }
@@ -376,23 +376,23 @@ function buildAnthropicVisionBody(model, base64Data) {
         ]
       }
     ],
-    max_tokens: 800,
+    max_tokens: 500,
     temperature: 0.0
   };
 }
 
 function buildGeminiTextBody(systemPrompt, userPrompt, temperature, model) {
   let generationConfig = {
-    maxOutputTokens: 1500,
+    maxOutputTokens: 200,
     temperature: temperature
   };
   
-  if (model.toLowerCase().includes("thinking") || (configData.thinkingBudget && model.toLowerCase().includes("pro"))) {
+  if (model.toLowerCase().includes("thinking") && configData.thinkingBudget && configData.thinkingBudget > 0) {
     generationConfig.thinkingConfig = {
       type: "ENABLED",
-      thinkingBudget: configData.thinkingBudget || 1024
+      thinkingBudget: configData.thinkingBudget
     };
-    generationConfig.temperature = undefined; // Avoid errors with temperature in thinking models
+    generationConfig.temperature = undefined;
   }
 
   return {
@@ -421,7 +421,7 @@ function buildGeminiVisionBody(base64Data) {
     ],
     generationConfig: {
       responseMimeType: "application/json",
-      maxOutputTokens: 800,
+      maxOutputTokens: 500,
       temperature: 0.0
     }
   };
@@ -446,7 +446,7 @@ function extractResponseText(provider, data) {
   return text;
 }
 
-async function callProviderAPI(provider, apiKey, model, systemPrompt, userPrompt, customBaseUrl, timeoutMs = 15000, temperature = 0.1) {
+async function callProviderAPI(provider, apiKey, model, systemPrompt, userPrompt, customBaseUrl, timeoutMs = 6000, temperature = 0.1) {
   const providerConfig = PROVIDER_ENDPOINTS[provider] || PROVIDER_ENDPOINTS.custom;
   const url = provider === "gemini"
     ? providerConfig.chatUrl(apiKey, model)
@@ -508,8 +508,8 @@ async function callProviderVisionAPI(provider, apiKey, model, base64Data, custom
 
 // ─── Single Model Query & Retry ──────────────────────────────────────────────
 
-async function querySingleModelWithRetry(modelName, provider, apiKey, systemPrompt, userPrompt, customBaseUrl, timeoutMs, temp) {
-  const maxRetries = configData.maxRetries !== undefined ? configData.maxRetries : 2;
+async function querySingleModelWithRetry(modelName, provider, apiKey, systemPrompt, userPrompt, customBaseUrl, timeoutMs = 4500, temp = 0.1) {
+  const maxRetries = configData.maxRetries !== undefined ? configData.maxRetries : 1;
   let lastError = null;
   let attemptPrompt = userPrompt;
   
@@ -520,51 +520,39 @@ async function querySingleModelWithRetry(modelName, provider, apiKey, systemProm
       if (match) {
         return { text: rawText, answerLetter: match[1].toUpperCase(), error: null };
       } else {
-        lastError = "Response did not contain 'ANSWER: X'";
-        attemptPrompt = attemptPrompt + "\n\nReminder: You must end your response with ANSWER: X where X is A, B, C, D, or E.";
+        lastError = "Response missing ANSWER: X";
+        attemptPrompt = attemptPrompt + "\n\nEnd with ANSWER: X (A, B, C, D, or E).";
       }
     } catch (err) {
       if (err.message && err.message.includes("429")) {
-        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt))); // Exponential backoff
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 400));
+        }
       }
       lastError = err.message;
     }
   }
-  throw new Error(`Failed after ${maxRetries} retries. Last error: ${lastError}`);
+  throw new Error(`Failed: ${lastError}`);
 }
 
-// ─── Consensus Mode ──────────────────────────────────────────────────────────
-
-async function runWithLimit(tasks, limit) {
-  const results = [];
-  const executing = [];
-  for (const task of tasks) {
-    const p = task();
-    results.push(p);
-    const e = p.catch(() => {}).finally(() => executing.splice(executing.indexOf(e), 1));
-    executing.push(e);
-    if (executing.length >= limit) await Promise.race(executing);
-  }
-  return Promise.allSettled(results);
-}
+// ─── Fast Parallel Consensus Mode ───────────────────────────────────────────
 
 async function solveDOMWithConsensus(question, choices, apiKey, primaryModel, provider, customBaseUrl, subjectData) {
-  const nCalls = Math.min(configData.consensusCount || 3, configData.consensusMax || 5);
-  const temp = configData.consensusTemperature !== undefined ? configData.consensusTemperature : 0.5;
-  const timeoutMs = 12000;
+  const nCalls = Math.min(configData.consensusCount || configData.consensusN || 3, configData.consensusMax || 3);
+  const temp = configData.consensusTemperature !== undefined ? configData.consensusTemperature : 0.3;
+  const timeoutMs = 4500;
   
   const systemPrompt = getSystemPrompt(subjectData);
   let promptText = formatQuestionPrompt(question, choices, subjectData);
   
-  const limit = configData.concurrencyLimit || 3;
-  
-  const taskFns = Array.from({ length: nCalls }).map(() => async () => {
+  // Fire all calls concurrently in parallel
+  const taskPromises = Array.from({ length: nCalls }).map(async () => {
     const t0 = Date.now();
     const res = await querySingleModelWithRetry(primaryModel, provider, apiKey, systemPrompt, promptText, customBaseUrl, timeoutMs, temp);
     return { ...res, elapsed: Date.now() - t0, model: primaryModel };
   });
   
-  let settled = await runWithLimit(taskFns, limit);
+  let settled = await Promise.allSettled(taskPromises);
   let successful = settled.filter(s => s.status === 'fulfilled' && s.value && s.value.answerLetter).map(s => s.value);
   
   if (successful.length === 0) {
@@ -589,19 +577,7 @@ async function solveDOMWithConsensus(question, choices, apiKey, primaryModel, pr
   }
   
   let winningLetter = candidates[0];
-  let winningSample = successful.find(s => s.answerLetter === winningLetter);
-  
-  if (candidates.length > 1) {
-    const verificationPrompt = promptText + "\n\nThere is a disagreement between these options: " + candidates.join(", ") + ". Which of these is correct and why? End with ANSWER: X";
-    try {
-      const tieBreaker = await querySingleModelWithRetry(primaryModel, provider, apiKey, systemPrompt, verificationPrompt, customBaseUrl, timeoutMs, 0.1);
-      winningLetter = tieBreaker.answerLetter;
-      winningSample = tieBreaker;
-    } catch (e) {
-      winningLetter = candidates[0];
-      winningSample = successful.find(s => s.answerLetter === winningLetter);
-    }
-  }
+  let winningSample = successful.find(s => s.answerLetter === winningLetter) || successful[0];
   
   const letterToIndex = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4 };
   const choiceIndex = letterToIndex[winningLetter] !== undefined ? letterToIndex[winningLetter] : 0;
@@ -870,7 +846,7 @@ async function handleSolveQuestion(request, senderTab) {
     const systemPrompt = getSystemPrompt(subjectData);
     let userPrompt = formatQuestionPrompt(cleaned.question, cleaned.choices, subjectData);
     
-    const timeoutMs = 15000;
+    const timeoutMs = 4500;
     const res = await querySingleModelWithRetry(model, provider, apiKey, systemPrompt, userPrompt, customBaseUrl, timeoutMs, 0.1);
     const latencyMs = Date.now() - t0;
 
