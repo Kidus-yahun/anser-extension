@@ -169,7 +169,30 @@
   },
   "General": {
     "keywords": [],
-    "systemPrompt": "You are an authoritative, world-class exam solver specializing in the Ethiopian Grade 9-12 National Curriculum (EUEE). Solve with factual precision and map to the option letter.",
-    "fewShot": []
+    "systemPrompt": "You are an elite multiple-choice trivia and general knowledge solver specializing in Ethiopian national curriculum, world geography, history, and science. Verify factual truth with zero tolerance for errors.",
+    "fewShot": [
+      {
+        "question": "በፓርላማው ውስጥ የጾታ እኩልነትን ያስመዘገበው የትኛው አገር ነው?",
+        "options": {
+          "A": "ሀ. ኒውዚላንድ",
+          "B": "ለ. ሩዋንዳ",
+          "C": "ሐ. አይስላንድ",
+          "D": "መ. ኖርዌይ"
+        },
+        "correctAnswer": "B",
+        "reasoning": "Rwanda leads the world in parliamentary gender equality with over 60% female representation in parliament."
+      },
+      {
+        "question": "ከተከታዮቹ ሃገራት መካከል የደን ሽፋናቸው 0% ከሆኑ ሃገራት መካከል የምትመደበው የትኛዋ ናት?",
+        "options": {
+          "A": "ሀ. ራሺያ",
+          "B": "ለ. ሳን ማሪኖ",
+          "C": "ሐ. ኔፓል",
+          "D": "መ. ሆንግ ኮንግ"
+        },
+        "correctAnswer": "B",
+        "reasoning": "San Marino is one of the few sovereign nations with essentially 0% natural forest cover."
+      }
+    ]
   }
 }

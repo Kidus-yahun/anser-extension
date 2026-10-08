@@ -194,12 +194,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // ─── Prompts and Input Cleaning ───────────────────────────────────────────────
 
-const BASE_SYSTEM_PROMPT = `(a) Internally translate question & choices to English.
-(b) Solve with strict factual accuracy.
-(c) Map back to the original option letter (A, B, C, D, or E). Keep original option order.
+const BASE_SYSTEM_PROMPT = `You are an elite, world-class multiple-choice exam solver with zero error tolerance.
+Execute this 3-step internal protocol before answering:
+1. POLARITY & TRAP CHECK: Identify negative words ('ያልሆነው', 'የማይካተተው', 'የተሳሳተው', 'አይደለም', 'NOT', 'EXCEPT'). If present, select the FALSE or EXCLUDED option.
+2. TRANSLATE & FACT-CHECK: Translate the Amharic question and choices into English internally. Verify scientific, mathematical, historical, or geographical truth.
+3. MAP LETTER: Map your verified choice to the exact original option letter (A, B, C, D, or E). Keep original option order.
 
-State your proof in 1 concise sentence (under 25 words).
-End with the final line EXACTLY: 'ANSWER: X' where X is A, B, C, D, or E. Do not output JSON.`;
+State your 1-sentence factual proof (under 20 words).
+End with the final line EXACTLY: 'ANSWER: X' (where X is A, B, C, D, or E). Do not output JSON.`;
 
 const VISION_SYSTEM_INSTRUCTION = `You are an authoritative, world-class multiple-choice quiz solver.
 Analyze this quiz screenshot and determine the correct answer with uncompromising accuracy.
@@ -847,7 +849,7 @@ async function handleSolveQuestion(request, senderTab) {
     let userPrompt = formatQuestionPrompt(cleaned.question, cleaned.choices, subjectData);
     
     const timeoutMs = 4500;
-    const res = await querySingleModelWithRetry(model, provider, apiKey, systemPrompt, userPrompt, customBaseUrl, timeoutMs, 0.1);
+    const res = await querySingleModelWithRetry(model, provider, apiKey, systemPrompt, userPrompt, customBaseUrl, timeoutMs, 0.0);
     const latencyMs = Date.now() - t0;
 
     const letterToIndex = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4 };
