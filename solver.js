@@ -57,12 +57,10 @@ function buildSystemPrompt(subject, shots) {
 
 The question and options may be written in Amharic (Ge'ez script), English, or a mix. Options are labelled ${n} by their position (A = ሀ, B = ለ, C = ሐ, D = መ). Follow this protocol exactly:
 
-1. TRANSLATE: Translate the question and EVERY option into English. Copy numbers, units, symbols and names exactly. Detect negative or exclusive wording such as አይደለም, ያልሆነው, የማይካተተው, የተሳሳተው, NOT, EXCEPT, FALSE, LEAST — if present, you must pick the option that does NOT fit.
-2. SOLVE IN ENGLISH: Work out the answer step by step in English before looking at the options. ${cfg.hints}
-3. CHECK EVERY OPTION: Compare your result with each option and eliminate the wrong ones. If nothing matches exactly, recheck your work, then choose the closest correct option.
-4. FINISH: Keep the reasoning compact. The very last line of your reply must be exactly:
+1. TRANSLATE & SOLVE: Translate mentally and solve the question in English in 1-2 concise sentences. Detect negative or exclusive wording (አይደለም, ያልሆነው, የማይካተተው, የተሳሳተው, NOT, EXCEPT, FALSE). ${cfg.hints}
+2. FINISH: Keep reasoning compact. The very last line of your reply must be exactly:
 ANSWER: X
-where X is one capital letter (the option label). Write nothing after it. Never answer with option text instead of the letter.`;
+where X is one capital letter (A, B, C, D, or E). Write nothing after it. Never answer with option text instead of the letter.`;
 
   if (shots && shots.length) {
     p += "\n\nSOLVED EXAMPLES (same format you must follow):";
@@ -79,7 +77,7 @@ function buildUserPrompt(question, choices, hasImage, extra) {
     p += "\n\nNOTE: This question contains an image/figure that is NOT available to you. Use the text only; if the answer truly depends on the figure, pick the most probable option.";
   }
   if (extra) p += `\n\n${extra}`;
-  p += `\n\nTranslate to English, solve step by step, check every option, then end with the line "ANSWER: X".`;
+  p += `\n\nBriefly verify in 1-2 sentences in English, then conclude with the exact line:\nANSWER: X`;
   return p;
 }
 

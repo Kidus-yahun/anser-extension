@@ -304,7 +304,11 @@ function extractResponseText(provider, data) {
   }
   // OpenAI-compatible (openai, openrouter, groq, custom)
   if (data.error) throw new Error(data.error.message || "API error");
-  const text = data.choices?.[0]?.message?.content;
+  const msg = data.choices?.[0]?.message;
+  let text = (msg?.content || "").trim();
+  if (!text && msg?.reasoning) {
+    text = msg.reasoning.trim();
+  }
   if (!text) throw new Error("No answer returned by model");
   return text;
 }
