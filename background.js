@@ -95,9 +95,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "SOLVE_QUESTION") {
-    handleSolveQuestion(request, sender.tab)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ success: false, error: err.message }));
+    try {
+      handleSolveQuestion(request, sender.tab)
+        .then((res) => {
+          try { sendResponse(res); } catch (e) {}
+        })
+        .catch((err) => {
+          try { sendResponse({ success: false, error: err?.message || String(err) }); } catch (e) {}
+        });
+    } catch (err) {
+      sendResponse({ success: false, error: err?.message || String(err) });
+    }
     return true;
   }
 

@@ -9,6 +9,9 @@
   window.__ANSER_INJECTED__ = true;
 
   let isSolving = false;
+  let lastSolveStartTime = 0;
+  let lastHotkeyTime = 0;
+  let solveWatchdog = null;
   let lastSolve = null; // remembered for the "Mark wrong" button
   let floatingWidget = null;
   let isStealth = false;
@@ -551,9 +554,6 @@
     }
   }
 
-  let solveWatchdog = null;
-  let lastSolveStartTime = 0;
-
   function resetSolvingState() {
     isSolving = false;
     clearTimeout(solveWatchdog);
@@ -565,12 +565,18 @@
 
   // 5. Trigger Solve Pipeline
   async function triggerSolve() {
+    const now = Date.now();
     if (isSolving) {
-      console.warn("[Anser] Solve already in progress.");
-      return;
+      if (now - lastSolveStartTime > 6000) {
+        // Auto-heal stuck state after 6 seconds
+        resetSolvingState();
+      } else {
+        // Silently debounce rapid triggers (no console.warn to avoid extension error badge)
+        return;
+      }
     }
     isSolving = true;
-    lastSolveStartTime = Date.now();
+    lastSolveStartTime = now;
 
     const labelEl = document.getElementById("anser-btn-label");
     const infoPill = document.getElementById("anser-info-pill");
@@ -579,15 +585,14 @@
     if (floatingWidget) floatingWidget.classList.add("anser-busy");
     if (infoPill) infoPill.classList.add("hidden");
 
-    // 90-second auto-reset watchdog (voting + verification + 429 backoff can take a while)
+    // 8-second auto-reset watchdog
     clearTimeout(solveWatchdog);
     solveWatchdog = setTimeout(() => {
       if (isSolving) {
-        console.warn("[Anser] Solving timed out after 90s. Resetting state.");
         resetSolvingState();
         showError("Solving request timed out. Please try again.");
       }
-    }, 90000);
+    }, 8000);
 
     try {
       // Check stored preference for input method (DOM vs Vision)
@@ -642,6 +647,11 @@
       // Send to background service worker
       chrome.runtime.sendMessage(payload, (response) => {
         resetSolvingState();
+
+        if (chrome.runtime.lastError) {
+          showError(chrome.runtime.lastError.message || "Communication with solver failed");
+          return;
+        }
 
         if (!response || !response.success) {
           showError(response?.error || "Failed to solve question");
@@ -789,7 +799,7 @@
 
   function showError(msg) {
     if (isStealth) {
-      console.warn("[Anser]:", msg);
+      console.log("[Anser]:", msg);
       return;
     }
     showNotification(`⚠️ ${msg}`, "error", 4500);
@@ -806,13 +816,15 @@
     if (e.altKey && (e.code === "KeyQ" || e.key === "q" || e.key === "Q")) {
       e.preventDefault();
       e.stopPropagation();
+      const now = Date.now();
+      if (now - lastHotkeyTime < 400) return;
+      lastHotkeyTime = now;
       triggerSolve();
     }
   }
 
-  // Capture phase on both window and document to ensure event is handled even if page stops bubbling
+  // Capture phase on window to ensure event is handled even if page stops bubbling
   window.addEventListener("keydown", handleHotkey, { capture: true });
-  document.addEventListener("keydown", handleHotkey, { capture: true });
 
   // Initialize widget when DOM is ready
   if (document.readyState === "loading") {
