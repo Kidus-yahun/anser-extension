@@ -499,15 +499,16 @@ function buildReasoningBody(provider, model, systemPrompt, userPrompt, o, droppe
  */
 async function callModelText(provider, apiKey, model, systemPrompt, userPrompt, customBaseUrl, opts) {
   const cfg = PROVIDER_ENDPOINTS[provider] || PROVIDER_ENDPOINTS.custom;
-  const url = provider === "gemini" ? cfg.chatUrl(apiKey, model) : cfg.chatUrl(apiKey, model, customBaseUrl);
   const headers = { "Content-Type": "application/json", ...cfg.authHeader(apiKey) };
-  // Remember which parameters this model rejected so parallel votes don't each rediscover it
-  const cacheKey = `${provider}|${model}`;
-  const dropped = (_paramDropCache[cacheKey] = _paramDropCache[cacheKey] ||
-    { temperature: false, thinking: false, maxCompletion: false });
   let backoffs = 0;
+  let pivoted = false;
 
   for (;;) {
+    const url = provider === "gemini" ? cfg.chatUrl(apiKey, model) : cfg.chatUrl(apiKey, model, customBaseUrl);
+    const cacheKey = `${provider}|${model}`;
+    const dropped = (_paramDropCache[cacheKey] = _paramDropCache[cacheKey] ||
+      { temperature: false, thinking: false, maxCompletion: false });
+
     const body = buildReasoningBody(provider, model, systemPrompt, userPrompt, opts, dropped);
     let res;
     try {
@@ -524,13 +525,23 @@ async function callModelText(provider, apiKey, model, systemPrompt, userPrompt, 
     let data = null;
     try { data = await res.json(); } catch (e) { /* non-JSON body */ }
 
-    if (res.status === 429 || res.status === 503) {
+    if (res.status === 429 || res.status === 503 || (data?.error && /high demand|temporarily unavailable/i.test(data.error.message || ""))) {
       const msg = data?.error?.message || "";
       if (/quota/i.test(msg) || /resource_exhausted/i.test(data?.error?.status || "")) {
         const err = new Error("Google Gemini daily free quota exceeded (429). Please create a new free API key at aistudio.google.com or switch to Groq.");
         err.fatal = true;
         throw err;
       }
+
+      // If a Gemini model is experiencing high demand, automatically pivot to an available fallback model!
+      if (provider === "gemini" && !pivoted && /high demand|spikes in demand|overloaded/i.test(msg)) {
+        pivoted = true;
+        const altModel = model === "gemini-1.5-flash" ? "gemini-2.0-flash" : "gemini-1.5-flash";
+        console.log(`[Anser] ${model} experiencing high demand. Seamlessly pivoting to ${altModel}`);
+        model = altModel;
+        continue;
+      }
+
       if (backoffs >= (opts.maxRetries429 ?? 2)) throw new Error(`Rate limited / overloaded (HTTP ${res.status}). Try again in a moment.`);
       await sleep(600 * 2 ** backoffs);
       backoffs++;
