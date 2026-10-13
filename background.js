@@ -4,6 +4,8 @@
  * Supports: Gemini, OpenAI, Anthropic, OpenRouter, Groq, Custom OpenAI-Compatible
  */
 
+importScripts("config.js", "textutils.js", "subjects.js", "solver.js");
+
 const DEFAULT_MODEL = "gemini-3.5-flash-lite";
 
 function arrayBufferToBase64(buffer) {
@@ -15,34 +17,6 @@ function arrayBufferToBase64(buffer) {
   }
   return btoa(binary);
 }
-
-// ─── Global State & Config ────────────────────────────────────────────────────
-
-let subjectsMap = {};
-let configData = {
-  consensusCount: 3,
-  consensusMax: 5,
-  consensusTemperature: 0.5,
-  concurrencyLimit: 3,
-  maxRetries: 2,
-  thinkingBudget: 1024
-};
-
-async function loadSettings() {
-  try {
-    const subRes = await fetch(chrome.runtime.getURL('subjects.json'));
-    if (subRes.ok) subjectsMap = await subRes.json();
-  } catch (e) {
-    console.warn("Failed to load subjects.json", e);
-  }
-  try {
-    const confRes = await fetch(chrome.runtime.getURL('config.json'));
-    if (confRes.ok) configData = await confRes.json();
-  } catch (e) {
-    console.warn("Failed to load config.json", e);
-  }
-}
-loadSettings();
 
 // ─── Provider Configuration ───────────────────────────────────────────────────
 
@@ -100,6 +74,7 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
+// Listen for global shortcut commands (Alt+Q)
 chrome.commands.onCommand.addListener((command) => {
   if (command === "solve_question") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -110,6 +85,7 @@ chrome.commands.onCommand.addListener((command) => {
   }
 });
 
+// Handle incoming messages from content scripts or popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "FETCH_MODELS") {
     handleFetchModels(request.apiKey, request.provider, request.customBaseUrl)
@@ -122,6 +98,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     handleSolveQuestion(request, sender.tab)
       .then(sendResponse)
       .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (request.action === "LOG_MISS") {
+    saveMiss(request.miss).then(sendResponse).catch((err) => sendResponse({ success: false, error: err.message }));
     return true;
   }
 
@@ -150,58 +131,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   }
-
-  if (request.action === "LOG_MISS") {
-    chrome.storage.local.get(["missLog"], (data) => {
-      let log = Array.isArray(data.missLog) ? data.missLog : [];
-      log.unshift({
-        questionId: request.questionId,
-        correctAnswer: request.correctAnswer,
-        question: request.question,
-        options: request.options,
-        model_answer: request.model_answer,
-        subject: request.subject,
-        timestamp: new Date().toISOString()
-      });
-      chrome.storage.local.set({ missLog: log }, () => {
-        sendResponse({ success: true });
-      });
-    });
-    return true;
-  }
-  
-  if (request.action === "GET_MISS_LOG") {
-    chrome.storage.local.get(["missLog"], (data) => {
-      sendResponse({ success: true, log: data.missLog || [] });
-    });
-    return true;
-  }
-  
-  if (request.action === "EXPORT_MISS_LOG") {
-    chrome.storage.local.get(["missLog"], (data) => {
-      sendResponse({ success: true, data: JSON.stringify(data.missLog || []) });
-    });
-    return true;
-  }
-  
-  if (request.action === "CLEAR_MISS_LOG") {
-    chrome.storage.local.set({ missLog: [] }, () => {
-      sendResponse({ success: true });
-    });
-    return true;
-  }
 });
 
-// ─── Prompts and Input Cleaning ───────────────────────────────────────────────
-
-const BASE_SYSTEM_PROMPT = `You are an elite, world-class multiple-choice exam solver with zero error tolerance.
-Execute this 3-step internal protocol before answering:
-1. POLARITY & TRAP CHECK: Identify negative words ('ያልሆነው', 'የማይካተተው', 'የተሳሳተው', 'አይደለም', 'NOT', 'EXCEPT'). If present, select the FALSE or EXCLUDED option.
-2. TRANSLATE & FACT-CHECK: Translate the Amharic question and choices into English internally. Verify scientific, mathematical, historical, or geographical truth.
-3. MAP LETTER: Map your verified choice to the exact original option letter (A, B, C, D, or E). Keep original option order.
-
-State your 1-sentence factual proof (under 20 words).
-End with the final line EXACTLY: 'ANSWER: X' (where X is A, B, C, D, or E). Do not output JSON.`;
+// ─── System Prompt ────────────────────────────────────────────────────────────
 
 const VISION_SYSTEM_INSTRUCTION = `You are an authoritative, world-class multiple-choice quiz solver.
 Analyze this quiz screenshot and determine the correct answer with uncompromising accuracy.
@@ -209,12 +141,16 @@ Analyze this quiz screenshot and determine the correct answer with uncompromisin
 Follow this rigorous verification protocol:
 1. FAITHFUL CHARACTER TRANSCRIPTION:
    - Transcribe the Amharic question and all 4 options verbatim, glyph-by-glyph.
+   - Do NOT substitute unfamiliar words or foreign names with common ones based on topic expectations.
 2. CONSTRAINT & NEGATION DETECTION:
-   - Detect if the question contains negative phrasing or exceptions.
+   - Detect if the question contains negative phrasing or exceptions (e.g. "አይደለም", "ያልሆነው/ያልሆነችው", "የማይካተተው", "የተሳሳተው", "NOT", "EXCEPT").
+   - Respect specified calendar systems (Ethiopian ዓ.ም vs Gregorian G.C./እ.ኤ.አ) and measurement units.
 3. DECISIVE FACTUAL VERIFICATION:
    - Validate the fact against verifiable historical, scientific, or geographical truth.
+   - Actively guard against deceptive near-miss distractors (close dates, similar names).
+   - In 1-2 concise sentences, prove why the selected choice is factually correct.
 4. FINAL CONCLUSION:
-   - Conclude with the exact 0-based choice index (0 for ሀ/A, 1 for ለ/B, etc.) and exact option text.
+   - Conclude with the exact 0-based choice index (0 for ሀ/A, 1 for ለ/B, 2 for ሐ/C, 3 for መ/D) and exact option text.
 
 Return ONLY valid JSON without markdown fences:
 {
@@ -225,103 +161,21 @@ Return ONLY valid JSON without markdown fences:
   "choice_text": "<exact text of the chosen correct option>"
 }`;
 
-function cleanInput(question, choices) {
-  let q = (question || "").normalize("NFC")
-    .replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-    
-  let c = (choices || []).map(opt => 
-    opt.normalize("NFC")
-       .replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '')
-       .replace(/\s+/g, ' ')
-       .replace(/^([A-Ea-e0-9]\s*(\([ሀለሐመሠረa-zA-Z0-9]\))?|[ሀለሐመሠረa-zA-Z0-9])[\.\)\-\:\s]+/, "")
-       .trim()
-  );
-
-  const optRegex = /([A-Ea-e])[\.\)]\s*(.*?)(?=(?:[A-Ea-e][\.\)]\s*)|$)/g;
-  if (c.length === 0) {
-    let match;
-    let newQ = q;
-    let foundOpts = [];
-    while ((match = optRegex.exec(q)) !== null) {
-      if (newQ === q) {
-        newQ = q.substring(0, match.index).trim();
-      }
-      foundOpts.push(match[2].trim());
-    }
-    if (foundOpts.length > 0) {
-      q = newQ;
-      c = foundOpts;
-    }
-  }
-
-  return { question: q, choices: c };
-}
-
-function findSubject(nameOrKey) {
-  if (!nameOrKey) return null;
-  const target = String(nameOrKey).trim().toLowerCase();
-  for (const [key, data] of Object.entries(subjectsMap)) {
-    if (key.toLowerCase() === target) {
-      return { key, data };
-    }
-  }
-  return null;
-}
-
-function detectSubject(questionText) {
-  const qLower = (questionText || "").toLowerCase();
-  for (const [subjKey, subjData] of Object.entries(subjectsMap)) {
-    if (subjData.keywords && subjData.keywords.some(k => qLower.includes(k.toLowerCase()))) {
-      return { key: subjKey, data: subjData };
-    }
-  }
-  const general = findSubject("General") || findSubject("general");
-  return general || { key: "General", data: { systemPrompt: "You are an expert Ethiopian national exam teacher covering all subjects. Follow Ethiopian curriculum standards." } };
-}
-
-function getSystemPrompt(subjectData) {
-  let prompt = subjectData?.systemPrompt || "You are an authoritative, world-class multiple-choice exam solver with zero error tolerance.";
-  return prompt + "\n\n" + BASE_SYSTEM_PROMPT;
-}
-
-function formatFewShotExamples(fewShot) {
-  if (!Array.isArray(fewShot) || fewShot.length === 0) return "";
-  return fewShot.map((ex, idx) => {
-    let optStr = "";
-    if (ex.options && typeof ex.options === "object") {
-      optStr = Object.entries(ex.options).map(([k, v]) => `${k}) ${v}`).join("\n");
-    }
-    return `[EXAMPLE ${idx + 1}]\nQuestion: ${ex.question}\nChoices:\n${optStr}\nReasoning: ${ex.reasoning}\nANSWER: ${ex.correctAnswer}`;
-  }).join("\n\n");
-}
-
-function formatQuestionPrompt(question, choices, subjectData) {
-  let prompt = `[QUESTION]\n${question}\n\n[CHOICES]\n`;
-  const labels = ['A', 'B', 'C', 'D', 'E'];
-  choices.forEach((c, i) => {
-    prompt += `${labels[i]}) ${c}\n`;
-  });
-  
-  const fewShotText = formatFewShotExamples(subjectData?.fewShot);
-  if (fewShotText) {
-    prompt = `[FEW-SHOT EXAMPLES]\n${fewShotText}\n\n` + prompt;
-  }
-  return prompt;
-}
-
 // ─── Provider-Specific API Adapters ───────────────────────────────────────────
 
-function buildOpenAITextBody(model, systemPrompt, userPrompt, temperature) {
+/**
+ * Build a chat completion request body for OpenAI-compatible APIs
+ */
+function buildOpenAITextBody(model, systemPrompt, userPrompt) {
   return {
     model,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
     ],
-    max_tokens: 200,
-    temperature: temperature
+    max_tokens: 300,
+    temperature: 0.0,
+    response_format: { type: "json_object" }
   };
 }
 
@@ -340,21 +194,21 @@ function buildOpenAIVisionBody(model, base64Data) {
         ]
       }
     ],
-    max_tokens: 500,
+    max_tokens: 800,
     temperature: 0.0,
     response_format: { type: "json_object" }
   };
 }
 
-function buildAnthropicTextBody(model, systemPrompt, userPrompt, temperature) {
+function buildAnthropicTextBody(model, systemPrompt, userPrompt) {
   return {
     model,
     system: systemPrompt,
     messages: [
       { role: "user", content: userPrompt }
     ],
-    max_tokens: 200,
-    temperature: temperature
+    max_tokens: 300,
+    temperature: 0.0
   };
 }
 
@@ -378,31 +232,22 @@ function buildAnthropicVisionBody(model, base64Data) {
         ]
       }
     ],
-    max_tokens: 500,
+    max_tokens: 800,
     temperature: 0.0
   };
 }
 
-function buildGeminiTextBody(systemPrompt, userPrompt, temperature, model) {
-  let generationConfig = {
-    maxOutputTokens: 200,
-    temperature: temperature
-  };
-  
-  if (model.toLowerCase().includes("thinking") && configData.thinkingBudget && configData.thinkingBudget > 0) {
-    generationConfig.thinkingConfig = {
-      type: "ENABLED",
-      thinkingBudget: configData.thinkingBudget
-    };
-    generationConfig.temperature = undefined;
-  }
-
+function buildGeminiTextBody(systemPrompt, userPrompt) {
   return {
     system_instruction: {
       parts: [{ text: systemPrompt }]
     },
     contents: [{ parts: [{ text: userPrompt }] }],
-    generationConfig
+    generationConfig: {
+      responseMimeType: "application/json",
+      maxOutputTokens: 250,
+      temperature: 0.0
+    }
   };
 }
 
@@ -423,17 +268,24 @@ function buildGeminiVisionBody(base64Data) {
     ],
     generationConfig: {
       responseMimeType: "application/json",
-      maxOutputTokens: 500,
+      maxOutputTokens: 800,
       temperature: 0.0
     }
   };
 }
 
+/**
+ * Extract text result from provider-specific API response
+ */
 function extractResponseText(provider, data) {
   if (provider === "gemini") {
     if (data.error) throw new Error(data.error.message || "Gemini API error");
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error("No answer returned by Gemini");
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const text = parts.filter((pt) => !pt.thought && pt.text).map((pt) => pt.text).join("");
+    if (!text) {
+      const why = data.promptFeedback?.blockReason || data.candidates?.[0]?.finishReason || "empty reply";
+      throw new Error(`No answer returned by Gemini (${why})`);
+    }
     return text;
   }
   if (provider === "anthropic") {
@@ -442,13 +294,17 @@ function extractResponseText(provider, data) {
     if (!block?.text) throw new Error("No answer returned by Anthropic");
     return block.text;
   }
+  // OpenAI-compatible (openai, openrouter, groq, custom)
   if (data.error) throw new Error(data.error.message || "API error");
   const text = data.choices?.[0]?.message?.content;
   if (!text) throw new Error("No answer returned by model");
   return text;
 }
 
-async function callProviderAPI(provider, apiKey, model, systemPrompt, userPrompt, customBaseUrl, timeoutMs = 6000, temperature = 0.1) {
+/**
+ * Generic API call to any provider
+ */
+async function callProviderAPI(provider, apiKey, model, systemPrompt, userPrompt, customBaseUrl, timeoutMs = 8000) {
   const providerConfig = PROVIDER_ENDPOINTS[provider] || PROVIDER_ENDPOINTS.custom;
   const url = provider === "gemini"
     ? providerConfig.chatUrl(apiKey, model)
@@ -460,11 +316,11 @@ async function callProviderAPI(provider, apiKey, model, systemPrompt, userPrompt
 
   let body;
   if (provider === "gemini") {
-    body = buildGeminiTextBody(systemPrompt, userPrompt, temperature, model);
+    body = buildGeminiTextBody(systemPrompt, userPrompt);
   } else if (provider === "anthropic") {
-    body = buildAnthropicTextBody(model, systemPrompt, userPrompt, temperature);
+    body = buildAnthropicTextBody(model, systemPrompt, userPrompt);
   } else {
-    body = buildOpenAITextBody(model, systemPrompt, userPrompt, temperature);
+    body = buildOpenAITextBody(model, systemPrompt, userPrompt);
   }
 
   const res = await fetch(url, {
@@ -478,6 +334,9 @@ async function callProviderAPI(provider, apiKey, model, systemPrompt, userPrompt
   return extractResponseText(provider, data);
 }
 
+/**
+ * Vision API call to any provider
+ */
 async function callProviderVisionAPI(provider, apiKey, model, base64Data, customBaseUrl, timeoutMs = 10000) {
   const providerConfig = PROVIDER_ENDPOINTS[provider] || PROVIDER_ENDPOINTS.custom;
   const url = provider === "gemini"
@@ -494,6 +353,7 @@ async function callProviderVisionAPI(provider, apiKey, model, base64Data, custom
   } else if (provider === "anthropic") {
     body = buildAnthropicVisionBody(model, base64Data);
   } else {
+    // OpenAI-compatible vision (openai, openrouter, groq, custom)
     body = buildOpenAIVisionBody(model, base64Data);
   }
 
@@ -508,100 +368,123 @@ async function callProviderVisionAPI(provider, apiKey, model, base64Data, custom
   return extractResponseText(provider, data);
 }
 
-// ─── Single Model Query & Retry ──────────────────────────────────────────────
+// ─── Reasoning-capable text call (used by solver.js) ─────────────────────────
 
-async function querySingleModelWithRetry(modelName, provider, apiKey, systemPrompt, userPrompt, customBaseUrl, timeoutMs = 4500, temp = 0.1) {
-  const maxRetries = configData.maxRetries !== undefined ? configData.maxRetries : 1;
-  let lastError = null;
-  let attemptPrompt = userPrompt;
-  
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const rawText = await callProviderAPI(provider, apiKey, modelName, systemPrompt, attemptPrompt, customBaseUrl, timeoutMs, temp);
-      const match = rawText.match(/ANSWER:\s*([A-Ea-e])/i);
-      if (match) {
-        return { text: rawText, answerLetter: match[1].toUpperCase(), error: null };
-      } else {
-        lastError = "Response missing ANSWER: X";
-        attemptPrompt = attemptPrompt + "\n\nEnd with ANSWER: X (A, B, C, D, or E).";
-      }
-    } catch (err) {
-      if (err.message && err.message.includes("429")) {
-        if (attempt < maxRetries) {
-          await new Promise(r => setTimeout(r, 400));
-        }
-      }
-      lastError = err.message;
-    }
-  }
-  throw new Error(`Failed: ${lastError}`);
+const _paramDropCache = {};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function geminiThinkingConfig(model, level, budgets) {
+  if (!level || level === "default") return null;
+  if (/gemini-3/i.test(model)) return { thinkingLevel: level === "off" ? "minimal" : level };
+  if (/gemini-2\.5/i.test(model)) return { thinkingBudget: level === "off" ? 0 : (budgets && budgets[level]) || 4096 };
+  return null;
 }
 
-// ─── Fast Parallel Consensus Mode ───────────────────────────────────────────
-
-async function solveDOMWithConsensus(question, choices, apiKey, primaryModel, provider, customBaseUrl, subjectData) {
-  const nCalls = Math.min(configData.consensusCount || configData.consensusN || 3, configData.consensusMax || 3);
-  const temp = configData.consensusTemperature !== undefined ? configData.consensusTemperature : 0.3;
-  const timeoutMs = 4500;
-  
-  const systemPrompt = getSystemPrompt(subjectData);
-  let promptText = formatQuestionPrompt(question, choices, subjectData);
-  
-  // Fire all calls concurrently in parallel
-  const taskPromises = Array.from({ length: nCalls }).map(async () => {
-    const t0 = Date.now();
-    const res = await querySingleModelWithRetry(primaryModel, provider, apiKey, systemPrompt, promptText, customBaseUrl, timeoutMs, temp);
-    return { ...res, elapsed: Date.now() - t0, model: primaryModel };
-  });
-  
-  let settled = await Promise.allSettled(taskPromises);
-  let successful = settled.filter(s => s.status === 'fulfilled' && s.value && s.value.answerLetter).map(s => s.value);
-  
-  if (successful.length === 0) {
-    const errors = settled.map((s) => s.reason?.message || "Failed").join("; ");
-    throw new Error(`All parallel consensus models failed: ${errors}`);
-  }
-  
-  let voteCounts = {};
-  successful.forEach(s => {
-    voteCounts[s.answerLetter] = (voteCounts[s.answerLetter] || 0) + 1;
-  });
-  
-  let maxVotes = 0;
-  let candidates = [];
-  for (const [letter, count] of Object.entries(voteCounts)) {
-    if (count > maxVotes) {
-      maxVotes = count;
-      candidates = [letter];
-    } else if (count === maxVotes) {
-      candidates.push(letter);
+function buildReasoningBody(provider, model, systemPrompt, userPrompt, o, dropped) {
+  if (provider === "gemini") {
+    const generationConfig = { maxOutputTokens: o.maxOutputTokens };
+    if (!dropped.temperature) generationConfig.temperature = o.temperature;
+    if (!dropped.thinking) {
+      const tc = geminiThinkingConfig(model, o.thinkingLevel, o.thinkingBudgets);
+      if (tc) generationConfig.thinkingConfig = tc;
     }
+    return {
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+      generationConfig
+    };
   }
-  
-  let winningLetter = candidates[0];
-  let winningSample = successful.find(s => s.answerLetter === winningLetter) || successful[0];
-  
-  const letterToIndex = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4 };
-  const choiceIndex = letterToIndex[winningLetter] !== undefined ? letterToIndex[winningLetter] : 0;
-  
-  return {
-    choice_index: choiceIndex,
-    choice_text: choices[choiceIndex] || "",
-    reasoning: winningSample.text,
-    consensus: `${maxVotes}/${successful.length} consensus`,
-    votes: maxVotes,
-    totalVoters: successful.length,
-    voters: successful.map(s => `${s.model} (${s.elapsed}ms) - ${s.answerLetter}`)
+  if (provider === "anthropic") {
+    const body = {
+      model,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+      max_tokens: Math.min(o.maxOutputTokens, 4096)
+    };
+    if (!dropped.temperature) body.temperature = Math.min(o.temperature, 1);
+    return body;
+  }
+  // OpenAI-compatible (openai, openrouter, groq, custom)
+  const body = {
+    model,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ]
   };
+  body[dropped.maxCompletion ? "max_completion_tokens" : "max_tokens"] = o.maxOutputTokens;
+  if (!dropped.temperature) body.temperature = o.temperature;
+  return body;
+}
+
+/**
+ * Free-text model call with: per-call timeout, exponential backoff on 429/503,
+ * and automatic fallback when a model rejects temperature / thinking / max_tokens.
+ */
+async function callModelText(provider, apiKey, model, systemPrompt, userPrompt, customBaseUrl, opts) {
+  const cfg = PROVIDER_ENDPOINTS[provider] || PROVIDER_ENDPOINTS.custom;
+  const url = provider === "gemini" ? cfg.chatUrl(apiKey, model) : cfg.chatUrl(apiKey, model, customBaseUrl);
+  const headers = { "Content-Type": "application/json", ...cfg.authHeader(apiKey) };
+  // Remember which parameters this model rejected so parallel votes don't each rediscover it
+  const cacheKey = `${provider}|${model}`;
+  const dropped = (_paramDropCache[cacheKey] = _paramDropCache[cacheKey] ||
+    { temperature: false, thinking: false, maxCompletion: false });
+  let backoffs = 0;
+
+  for (;;) {
+    const body = buildReasoningBody(provider, model, systemPrompt, userPrompt, opts, dropped);
+    let res;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(opts.timeoutMs || 45000)
+      });
+    } catch (e) {
+      throw new Error(e.name === "TimeoutError" ? "Model call timed out" : `Network error: ${e.message}`);
+    }
+
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* non-JSON body */ }
+
+    if (res.status === 429 || res.status === 503) {
+      const msg = data?.error?.message || "";
+      if (/quota/i.test(msg) || /resource_exhausted/i.test(data?.error?.status || "")) {
+        const err = new Error("Google Gemini daily free quota exceeded (429). Please create a new free API key at aistudio.google.com or switch to Groq.");
+        err.fatal = true;
+        throw err;
+      }
+      if (backoffs >= (opts.maxRetries429 ?? 2)) throw new Error(`Rate limited / overloaded (HTTP ${res.status}). Try again in a moment.`);
+      await sleep(600 * 2 ** backoffs);
+      backoffs++;
+      continue;
+    }
+
+    if (!res.ok) {
+      const msg = data?.error?.message || data?.error?.type || `HTTP ${res.status}`;
+      if (res.status === 400) {
+        if (!dropped.thinking && /thinking/i.test(msg)) { dropped.thinking = true; continue; }
+        if (!dropped.temperature && /temperature/i.test(msg)) { dropped.temperature = true; continue; }
+        if (!dropped.maxCompletion && /max_completion_tokens/i.test(msg)) { dropped.maxCompletion = true; continue; }
+      }
+      const err = new Error(msg);
+      if ([400, 401, 403, 404].includes(res.status)) err.fatal = true;
+      throw err;
+    }
+    return extractResponseText(provider, data);
+  }
 }
 
 // ─── Fetch Models ─────────────────────────────────────────────────────────────
 
 async function handleFetchModels(apiKey, provider, customBaseUrl) {
   provider = provider || "gemini";
+
   if (!apiKey || typeof apiKey !== "string" || !apiKey.trim()) {
     return { success: false, error: "Please enter your API Key." };
   }
+
   const cleanKey = apiKey.trim();
 
   if (provider === "gemini") {
@@ -611,6 +494,7 @@ async function handleFetchModels(apiKey, provider, customBaseUrl) {
   } else if (provider === "openrouter") {
     return fetchOpenRouterModels(cleanKey);
   } else {
+    // openai, groq, custom — all OpenAI-compatible
     const providerConfig = PROVIDER_ENDPOINTS[provider] || PROVIDER_ENDPOINTS.custom;
     return fetchOpenAICompatibleModels(cleanKey, providerConfig.modelsUrl(cleanKey, customBaseUrl), providerConfig.authHeader(cleanKey));
   }
@@ -619,8 +503,13 @@ async function handleFetchModels(apiKey, provider, customBaseUrl) {
 async function fetchGeminiModels(apiKey) {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
   const data = await res.json();
-  if (data.error) return { success: false, error: data.error.message || "Failed to fetch models" };
-  if (!data.models) return { success: false, error: "No models found for this API key" };
+
+  if (data.error) {
+    return { success: false, error: data.error.message || "Failed to fetch models" };
+  }
+  if (!data.models) {
+    return { success: false, error: "No models found for this API key" };
+  }
 
   const validModels = data.models
     .filter((m) => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
@@ -637,10 +526,13 @@ async function fetchGeminiModels(apiKey) {
     if (!aFlash && bFlash) return 1;
     return a.displayName.localeCompare(b.displayName);
   });
+
   return { success: true, models: validModels };
 }
 
 async function fetchAnthropicModels(apiKey) {
+  // Anthropic's /v1/models endpoint may not be available for all keys;
+  // return a curated list of known models
   try {
     const res = await fetch("https://api.anthropic.com/v1/models", {
       headers: {
@@ -657,7 +549,9 @@ async function fetchAnthropicModels(apiKey) {
       }));
       if (models.length > 0) return { success: true, models };
     }
-  } catch (e) {}
+  } catch (e) {
+    // Fallback to curated list
+  }
 
   return {
     success: true,
@@ -676,24 +570,33 @@ async function fetchOpenRouterModels(apiKey) {
     headers: { Authorization: `Bearer ${apiKey}` }
   });
   const data = await res.json();
-  if (data.error) return { success: false, error: data.error.message || "Failed to fetch models" };
+
+  if (data.error) {
+    return { success: false, error: data.error.message || "Failed to fetch models" };
+  }
 
   const models = (data.data || [])
     .filter((m) => m.id)
-    .slice(0, 100)
+    .slice(0, 100) // Limit for UI
     .map((m) => ({
       id: m.id,
       displayName: m.name || m.id
     }));
 
-  if (models.length === 0) return { success: false, error: "No models found" };
+  if (models.length === 0) {
+    return { success: false, error: "No models found" };
+  }
+
   return { success: true, models };
 }
 
 async function fetchOpenAICompatibleModels(apiKey, url, headers) {
   const res = await fetch(url, { headers: { ...headers, "Content-Type": "application/json" } });
   const data = await res.json();
-  if (data.error) return { success: false, error: data.error.message || "Failed to fetch models" };
+
+  if (data.error) {
+    return { success: false, error: data.error.message || "Failed to fetch models" };
+  }
 
   const models = (data.data || [])
     .filter((m) => m.id)
@@ -703,7 +606,10 @@ async function fetchOpenAICompatibleModels(apiKey, url, headers) {
     }))
     .sort((a, b) => a.id.localeCompare(b.id));
 
-  if (models.length === 0) return { success: false, error: "No models found for this API key" };
+  if (models.length === 0) {
+    return { success: false, error: "No models found for this API key" };
+  }
+
   return { success: true, models };
 }
 
@@ -721,22 +627,29 @@ async function handleSolveQuestion(request, senderTab) {
   ]);
 
   const apiKey = (config.geminiApiKey || "").trim();
-  if (!apiKey) throw new Error("API Key is missing. Click the Anser extension icon and enter your API Key.");
-  
+  if (!apiKey) {
+    throw new Error("API Key is missing. Click the Anser extension icon and enter your API Key.");
+  }
   const provider = config.aiProvider || "gemini";
   const model = config.selectedModel || DEFAULT_MODEL;
   const actionType = config.actionType || "highlight";
   const inputMethod = request.preferredInputMethod || config.inputMethod || "dom";
-  const consensusMode = config.consensusMode !== false;
+  const consensusMode = config.consensusMode !== false; // = voting enabled
   const customBaseUrl = (config.customBaseUrl || "").trim();
 
   const t0 = Date.now();
 
   if (inputMethod === "vision") {
+    // ── Vision Mode ──────────────────────────────────────────────────────────
     const windowId = senderTab?.windowId || null;
-    const screenshotDataUrl = await chrome.tabs.captureVisibleTab(windowId, { format: "jpeg", quality: 90 });
+    const screenshotDataUrl = await chrome.tabs.captureVisibleTab(windowId, {
+      format: "jpeg",
+      quality: 90
+    });
+
     let base64Data = screenshotDataUrl.replace(/^data:image\/jpeg;base64,/, "");
 
+    // High-resolution tight crop if cropArea is provided
     if (request.cropArea && request.cropArea.width > 50 && request.cropArea.height > 50) {
       try {
         const resBlob = await fetch(screenshotDataUrl);
@@ -779,6 +692,7 @@ async function handleSolveQuestion(request, senderTab) {
 
     const rawText = await callProviderVisionAPI(provider, apiKey, model, base64Data, customBaseUrl);
     const latencyMs = Date.now() - t0;
+
     const cleanJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
     const parsed = JSON.parse(cleanJson);
 
@@ -799,87 +713,47 @@ async function handleSolveQuestion(request, senderTab) {
       latencyMs,
       actionType,
       methodUsed: "vision",
-      modelUsed: model,
-      subject: "general"
+      modelUsed: model
     };
   } else {
+    // ── DOM Text Mode ────────────────────────────────────────────────────────
     const { question, choices } = request;
-    const cleaned = cleanInput(question, choices);
-    
-    const subjectOverride = request.subjectOverride;
-    let subjectData;
-    let subjectName;
-    const matchedOverride = findSubject(subjectOverride);
-    if (matchedOverride) {
-      subjectData = matchedOverride.data;
-      subjectName = matchedOverride.key;
-    } else {
-      const detected = detectSubject(cleaned.question);
-      subjectData = detected.data;
-      subjectName = detected.key;
+    if (!question || !choices || choices.length === 0) {
+      throw new Error("Missing question text or choices");
     }
 
-    if (consensusMode) {
-      const consensusResult = await solveDOMWithConsensus(cleaned.question, cleaned.choices, apiKey, model, provider, customBaseUrl, subjectData);
-      const latencyMs = Date.now() - t0;
-
-      await saveToQuestionBank({
-        question: cleaned.question,
-        choices: cleaned.choices,
-        answer_index: consensusResult.choice_index,
-        answer_text: consensusResult.choice_text,
-        reasoning: consensusResult.reasoning,
-        method: `Consensus (${consensusResult.consensus})`,
-        pageUrl: request.pageUrl,
-        pageTitle: request.pageTitle
-      });
-
-      return {
-        success: true,
-        result: consensusResult,
-        latencyMs,
-        actionType,
-        methodUsed: "dom_consensus",
-        modelUsed: `Consensus (${consensusResult.consensus})`,
-        subject: subjectName
-      };
-    }
-
-    const systemPrompt = getSystemPrompt(subjectData);
-    let userPrompt = formatQuestionPrompt(cleaned.question, cleaned.choices, subjectData);
-    
-    const timeoutMs = 4500;
-    const res = await querySingleModelWithRetry(model, provider, apiKey, systemPrompt, userPrompt, customBaseUrl, timeoutMs, 0.0);
+    // Accuracy engine: English reasoning + N votes + verification (all providers)
+    const result = await solveMCQ({
+      question,
+      choices,
+      hasImage: !!request.hasImage,
+      provider,
+      apiKey,
+      model,
+      customBaseUrl,
+      votesOverride: consensusMode ? undefined : 1
+    });
     const latencyMs = Date.now() - t0;
-
-    const letterToIndex = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4 };
-    const choiceIndex = letterToIndex[res.answerLetter] !== undefined ? letterToIndex[res.answerLetter] : 0;
-    
-    const parsed = {
-      choice_index: choiceIndex,
-      choice_text: cleaned.choices[choiceIndex] || "",
-      reasoning: res.text
-    };
+    const methodLabel = `${provider}/${model} · ${result.subject} · ${result.consensus}`;
 
     await saveToQuestionBank({
-      question: cleaned.question,
-      choices: cleaned.choices,
-      answer_index: parsed.choice_index,
-      answer_text: parsed.choice_text,
-      reasoning: parsed.reasoning,
-      method: `${provider}/${model}`,
+      question: question,
+      choices: result.choices,
+      answer_index: result.choice_index,
+      answer_text: result.choice_text,
+      reasoning: result.reasoning,
+      method: methodLabel,
       pageUrl: request.pageUrl,
       pageTitle: request.pageTitle
     });
 
     return {
       success: true,
-      result: parsed,
+      result,
       latencyMs,
       actionType,
       methodUsed: "dom",
-      modelUsed: model,
-      subject: subjectName
+      modelUsed: model
     };
   }
 }
@@ -889,12 +763,14 @@ async function handleSolveQuestion(request, senderTab) {
 async function saveToQuestionBank(entry) {
   try {
     if (!entry || !entry.question) return;
+
     const data = await chrome.storage.local.get(["questionBank"]);
     let bank = Array.isArray(data.questionBank) ? data.questionBank : [];
 
-    const normQ = entry.question.trim().toLowerCase().replace(/s+/g, " ");
+    const normQ = entry.question.trim().toLowerCase().replace(/\s+/g, " ");
+
     const existingIdx = bank.findIndex(
-      (item) => item.question && item.question.trim().toLowerCase().replace(/s+/g, " ") === normQ
+      (item) => item.question && item.question.trim().toLowerCase().replace(/\s+/g, " ") === normQ
     );
 
     const newRecord = {
@@ -924,4 +800,26 @@ async function saveToQuestionBank(entry) {
   } catch (err) {
     console.error("[Anser Bank Error]: Failed to save question to bank:", err);
   }
+}
+
+// ─── Miss Log (questions the model got wrong) ────────────────────────────────
+
+async function saveMiss(miss) {
+  if (!miss || !miss.question) return { success: false, error: "Empty miss" };
+  const { missLog } = await chrome.storage.local.get(["missLog"]);
+  const log = Array.isArray(missLog) ? missLog : [];
+  const entry = {
+    question: miss.question,
+    options: miss.options || [],
+    model_answer: miss.model_answer,
+    correct_answer: miss.correct_answer,
+    subject: miss.subject || "General",
+    timestamp: new Date().toISOString()
+  };
+  // Replace an older entry for the same question
+  const idx = log.findIndex((m) => m.question === entry.question);
+  if (idx >= 0) log.splice(idx, 1);
+  log.unshift(entry);
+  await chrome.storage.local.set({ missLog: log.slice(0, 500) });
+  return { success: true, count: Math.min(log.length, 500) };
 }

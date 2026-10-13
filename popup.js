@@ -62,14 +62,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputDomRadio = document.getElementById("input-dom");
   const inputVisionRadio = document.getElementById("input-vision");
   const consensusToggle = document.getElementById("consensus-toggle");
-  const consensusNSelect = document.getElementById('consensus-n');
-  const subjectSelect = document.getElementById('subject-select');
   const stealthToggle = document.getElementById("stealth-toggle");
   const openBankBtn = document.getElementById("open-bank-btn");
   const popupBankCount = document.getElementById("popup-bank-count");
-  const missCountBadge = document.getElementById('miss-count-badge');
-  const exportMissesBtn = document.getElementById('export-misses-btn');
-  const clearMissesBtn = document.getElementById('clear-misses-btn');
 
   const saveBtn = document.getElementById("save-btn");
 
@@ -146,33 +141,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     inputVisionRadio.disabled = !visionSupported;
 
-    // Consensus mode is now supported for all providers
+    consensusToggle.disabled = false; // voting works with every provider
   }
 
   // 1. Load Stored Settings
   chrome.storage.local.get(
-    ["geminiApiKey", "selectedModel", "actionType", "inputMethod", "consensusMode", "consensusN", "subjectOverride", "stealthMode", "aiProvider", "customBaseUrl", "missLog"],
+    ["geminiApiKey", "selectedModel", "actionType", "inputMethod", "consensusMode", "stealthMode", "aiProvider", "customBaseUrl"],
     (data) => {
       const provider = data.aiProvider || "gemini";
       providerSelect.value = provider;
       updateProviderUI(provider);
-
-      if (data.consensusN) {
-        consensusNSelect.value = data.consensusN.toString();
-      } else {
-        consensusNSelect.value = "3";
-      }
-
-      if (data.subjectOverride) {
-        subjectSelect.value = data.subjectOverride;
-      } else {
-        subjectSelect.value = "auto";
-      }
-
-      const misses = data.missLog || [];
-      if (missCountBadge) {
-        missCountBadge.textContent = misses.length === 1 ? "1 miss" : `${misses.length} misses`;
-      }
 
       if (data.customBaseUrl) {
         customBaseUrlInput.value = data.customBaseUrl;
@@ -374,44 +352,100 @@ document.addEventListener("DOMContentLoaded", () => {
     chrome.storage.local.set({ stealthMode: stealthToggle.checked });
   });
 
-  subjectSelect.addEventListener('change', () => {
-    const val = subjectSelect.value;
-    chrome.storage.local.set({ subjectOverride: val === 'auto' ? '' : val });
-    // Also notify the active tab
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]?.id) {
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'SET_SUBJECT_OVERRIDE', subject: val === 'auto' ? null : val });
-      }
+  // ── Accuracy Engine settings (stored as one object: accuracySettings) ──────────
+  const subjectSelect = document.getElementById("subject-select");
+  const votesSelect = document.getElementById("votes-select");
+  const thinkingSelect = document.getElementById("thinking-select");
+  const verifySelect = document.getElementById("verify-select");
+  const temperatureInput = document.getElementById("temperature-input");
+  const fewshotToggle = document.getElementById("fewshot-toggle");
+  const missCount = document.getElementById("miss-count");
+
+  function readAccuracyUI() {
+    const t = parseFloat(temperatureInput.value);
+    return {
+      subject: subjectSelect.value,
+      votes: parseInt(votesSelect.value, 10),
+      thinkingLevel: thinkingSelect.value,
+      verifyMode: verifySelect.value,
+      temperature: isNaN(t) ? ANSER_DEFAULTS.temperature : Math.max(0, Math.min(1.5, t)),
+      useFewShots: fewshotToggle.checked
+    };
+  }
+
+  function saveAccuracy() {
+    chrome.storage.local.set({ accuracySettings: readAccuracyUI() });
+  }
+
+  chrome.storage.local.get(["accuracySettings"], (d) => {
+    const s = { ...ANSER_DEFAULTS, ...(d.accuracySettings || {}) };
+    subjectSelect.value = s.subject;
+    votesSelect.value = String(s.votes);
+    thinkingSelect.value = s.thinkingLevel;
+    verifySelect.value = s.verifyMode;
+    temperatureInput.value = s.temperature;
+    fewshotToggle.checked = !!s.useFewShots;
+  });
+  [subjectSelect, votesSelect, thinkingSelect, verifySelect, temperatureInput, fewshotToggle].forEach((el) =>
+    el.addEventListener("change", saveAccuracy)
+  );
+
+  // ── Miss log: export / promote to few-shot / clear ───────────────────────────
+  function refreshMissCount() {
+    chrome.storage.local.get(["missLog"], (d) => {
+      const n = Array.isArray(d.missLog) ? d.missLog.length : 0;
+      missCount.textContent = n === 1 ? "1 miss" : `${n} misses`;
+    });
+  }
+  refreshMissCount();
+  chrome.storage.onChanged.addListener((ch) => { if (ch.missLog) refreshMissCount(); });
+
+  document.getElementById("export-misses-btn").addEventListener("click", () => {
+    chrome.storage.local.get(["missLog"], (d) => {
+      const log = Array.isArray(d.missLog) ? d.missLog : [];
+      if (!log.length) { showFeedback("No misses logged yet.", "error"); return; }
+      const blob = new Blob([JSON.stringify(log, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `anser-misses-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     });
   });
 
-  consensusNSelect.addEventListener('change', () => {
-    chrome.storage.local.set({ consensusN: parseInt(consensusNSelect.value, 10) });
-  });
-
-  if (exportMissesBtn) {
-    exportMissesBtn.addEventListener('click', () => {
-      chrome.storage.local.get(['missLog'], (data) => {
-        const misses = data.missLog || [];
-        const blob = new Blob([JSON.stringify(misses, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        chrome.downloads.download({
-          url: url,
-          filename: `anser-miss-log-${new Date().toISOString().slice(0,10)}.json`
+  document.getElementById("promote-misses-btn").addEventListener("click", () => {
+    chrome.storage.local.get(["missLog", "fewShotsUser"], (d) => {
+      const log = Array.isArray(d.missLog) ? d.missLog : [];
+      const shots = d.fewShotsUser || {};
+      let added = 0;
+      log.forEach((m) => {
+        if (!m.question || !m.options || !/^[A-F]$/.test(m.correct_answer || "") || m.promoted) return;
+        const subj = m.subject || "General";
+        shots[subj] = shots[subj] || [];
+        if (shots[subj].some((x) => x.question === m.question)) return;
+        shots[subj].unshift({
+          question: m.question,
+          options: m.options,
+          reasoning: "Verified correct answer (the model previously got this wrong, so check it carefully).",
+          answer: m.correct_answer
         });
+        shots[subj] = shots[subj].slice(0, 20);
+        m.promoted = true;
+        added++;
       });
+      chrome.storage.local.set({ fewShotsUser: shots, missLog: log }, () =>
+        showFeedback(added ? `Promoted ${added} miss${added > 1 ? "es" : ""} to few-shot examples.` : "Nothing new to promote.", added ? "success" : "error")
+      );
     });
-  }
+  });
 
-  if (clearMissesBtn) {
-    clearMissesBtn.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ action: "CLEAR_MISS_LOG" }, (response) => {
-        if (missCountBadge) {
-          missCountBadge.textContent = "0 misses";
-        }
-      });
-    });
-  }
+  document.getElementById("clear-misses-btn").addEventListener("click", () => {
+    if (confirm("Clear the whole miss log? (Promoted examples are kept.)")) {
+      chrome.storage.local.set({ missLog: [] });
+    }
+  });
 
   // 7. Save Settings with Tactile Feedback
   saveBtn.addEventListener("click", () => {
@@ -420,12 +454,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const actionType = actionAutoClickRadio.checked ? "auto_click" : "highlight";
     const inputMethod = inputVisionRadio.checked ? "vision" : "dom";
     const consensusMode = consensusToggle.checked;
-    const consensusN = parseInt(consensusNSelect.value, 10) || 3;
-    const subjectOverride = subjectSelect.value === 'auto' ? '' : subjectSelect.value;
     const stealthMode = stealthToggle.checked;
     const provider = providerSelect.value;
     const customBaseUrl = customBaseUrlInput?.value?.trim() || "";
 
+    saveAccuracy();
     chrome.storage.local.set(
       {
         geminiApiKey: key,
@@ -433,8 +466,6 @@ document.addEventListener("DOMContentLoaded", () => {
         actionType: actionType,
         inputMethod: inputMethod,
         consensusMode: consensusMode,
-        consensusN: consensusN,
-        subjectOverride: subjectOverride,
         stealthMode: stealthMode,
         aiProvider: provider,
         customBaseUrl: customBaseUrl

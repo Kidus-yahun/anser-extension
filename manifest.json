@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Anser - AI MCQ Solver",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Fast AI MCQ Solver supporting Gemini, OpenAI, Claude, OpenRouter, Groq & custom APIs with Auto-Click and Highlight",
   "permissions": [
     "activeTab",
@@ -30,7 +30,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": ["textutils.js", "content.js"],
       "css": ["content.css"]
     }
   ],

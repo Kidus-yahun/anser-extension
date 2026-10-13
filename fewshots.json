@@ -1,0 +1,52 @@
+{
+  "_readme": "Worked examples shown to the model per subject (max 3 used, see maxFewShotsPerSubject in config.js). Add your own real exam-style questions here: {question, options:[A,B,C,D texts], reasoning, answer:'C'}. Misses you 'Promote' in the popup are added automatically on top of these. Keys starting with _ are ignored.",
+  "Math": [
+    {
+      "question": "If f(x) = 3x² − 2x + 1, what is f′(2)?",
+      "options": ["8", "10", "12", "14"],
+      "reasoning": "f′(x) = 6x − 2. At x = 2: 6(2) − 2 = 10.",
+      "answer": "B"
+    }
+  ],
+  "Physics": [
+    {
+      "question": "A car starts from rest and accelerates uniformly at 2 m/s² for 5 s. How far does it travel?",
+      "options": ["5 m", "10 m", "25 m", "50 m"],
+      "reasoning": "s = ut + ½at² = 0 + ½(2)(5²) = 25 m.",
+      "answer": "C"
+    }
+  ],
+  "Chemistry": [
+    {
+      "question": "How many moles are in 36 g of water? (H = 1, O = 16)",
+      "options": ["1 mol", "2 mol", "3 mol", "4 mol"],
+      "reasoning": "M(H2O) = 2(1) + 16 = 18 g/mol. n = 36 / 18 = 2 mol.",
+      "answer": "B"
+    }
+  ],
+  "Biology": [
+    {
+      "question": "Which organelle is the main site of ATP production in a eukaryotic cell?",
+      "options": ["Ribosome", "Mitochondrion", "Golgi apparatus", "Lysosome"],
+      "reasoning": "Aerobic cellular respiration (Krebs cycle and oxidative phosphorylation) takes place in the mitochondrion.",
+      "answer": "B"
+    }
+  ],
+  "English": [
+    {
+      "question": "She ____ to school every day.",
+      "options": ["go", "goes", "going", "gone"],
+      "reasoning": "Present simple with a third-person singular subject takes -s/-es: 'goes'.",
+      "answer": "B"
+    }
+  ],
+  "Aptitude": [
+    {
+      "question": "What comes next? 2, 6, 12, 20, ?",
+      "options": ["28", "30", "32", "36"],
+      "reasoning": "Differences are 4, 6, 8, so the next difference is 10: 20 + 10 = 30.",
+      "answer": "B"
+    }
+  ],
+  "General": []
+}

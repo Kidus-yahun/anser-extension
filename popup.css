@@ -758,3 +758,14 @@ body {
   color: var(--amber-primary);
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
+
+/* ── Accuracy Engine card ─────────────────────────────────────────────── */
+.acc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; margin-top: 8px; }
+.acc-field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 600; color: #a8a29e; }
+.acc-field .styled-select, .acc-input { width: 100%; box-sizing: border-box; }
+.acc-input {
+  background: rgba(255,255,255,0.05); color: #fafaf9; border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 8px; padding: 7px 8px; font-size: 12px; font-family: inherit;
+}
+.acc-check { flex-direction: row; align-items: center; gap: 6px; grid-column: 1 / -1; }
+.acc-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }

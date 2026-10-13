@@ -336,3 +336,34 @@
     opacity: 1; 
   }
 }
+
+/* ── Accuracy engine: "Mark wrong" controls ─────────────────────────────── */
+.anser-info { flex-wrap: wrap !important; }
+.anser-miss-row {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin-left: auto !important;
+}
+.anser-miss-label {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #d6d3d1 !important;
+}
+.anser-miss-btn {
+  all: unset !important;
+  box-sizing: border-box !important;
+  cursor: pointer !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #fecaca !important;
+  background: rgba(239, 68, 68, 0.16) !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  border-radius: 8px !important;
+  padding: 3px 8px !important;
+  line-height: 1.2 !important;
+}
+.anser-miss-btn:hover { background: rgba(239, 68, 68, 0.3) !important; }
+.anser-miss-letter { min-width: 22px !important; text-align: center !important; color: #fafaf9 !important; background: rgba(255,255,255,0.1) !important; border-color: rgba(255,255,255,0.25) !important; }
+.anser-miss-letter:hover { background: rgba(245, 158, 11, 0.35) !important; }
+.anser-miss-letter[disabled] { opacity: 0.3 !important; cursor: not-allowed !important; }

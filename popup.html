@@ -234,62 +234,58 @@
         </div>
       </section>
 
-      <!-- 5. Self-Consistency Voting Toggle -->
+      <!-- 5. 3-Model Consensus Toggle -->
       <section class="settings-card consensus-card">
         <div class="consensus-row">
           <div class="consensus-info">
             <div class="consensus-title-row">
               <span class="card-label">Self-Consistency Voting</span>
-              <span class="consensus-pill">Majority Vote</span>
+              <span class="consensus-pill">Accuracy</span>
             </div>
-            <p class="consensus-desc">Sends the question N times in parallel with diverse reasoning, then picks the majority answer.</p>
+            <p class="consensus-desc">Solves the question several times with the same model (reasoning in English) and takes the majority answer.</p>
           </div>
           <label class="ios-switch">
             <input type="checkbox" id="consensus-toggle" checked>
             <span class="ios-slider"></span>
           </label>
-          <div class="consensus-n-selector" style="display:flex;align-items:center;gap:6px;margin-left:8px;">
-            <label for="consensus-n" style="font-size:11px;color:var(--text-muted);">N=</label>
-            <select id="consensus-n" class="styled-select" style="width:50px;padding:2px 4px;font-size:11px;">
-              <option value="3">3</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
-            </select>
-          </div>
         </div>
       </section>
 
-      <!-- Subject Override -->
-      <section class="settings-card">
+
+      <!-- 5b. Accuracy Engine -->
+      <section class="settings-card" id="accuracy-card">
         <div class="card-header-row">
-          <label for="subject-select" class="card-label">
-            Subject Override
-          </label>
-          <span class="model-badge" id="subject-hint">Auto-detect</span>
+          <span class="card-label">Accuracy Engine</span>
+          <span class="model-badge">English reasoning</span>
         </div>
-        <div class="select-wrapper">
-          <select id="subject-select" class="styled-select">
-            <option value="auto">Auto-detect from question</option>
-            <option value="math">Mathematics (ሂሳብ)</option>
-            <option value="physics">Physics (ፊዚክስ)</option>
-            <option value="chemistry">Chemistry (ኬሚስትሪ)</option>
-            <option value="biology">Biology (ባዮሎጂ)</option>
-            <option value="english">English</option>
-            <option value="aptitude">Aptitude (አፕቲቲዩድ)</option>
-            <option value="general">General</option>
-          </select>
-          <div class="select-chevron">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
+        <div class="acc-grid">
+          <label class="acc-field"><span>Subject</span>
+            <select id="subject-select" class="styled-select"><option value="auto">Auto-detect</option><option value="Math">Math</option><option value="Physics">Physics</option><option value="Chemistry">Chemistry</option><option value="Biology">Biology</option><option value="English">English</option><option value="Aptitude">Aptitude</option><option value="General">General</option></select></label>
+          <label class="acc-field"><span>Votes</span>
+            <select id="votes-select" class="styled-select"><option value="1">1 (fast)</option><option value="3">3 (recommended)</option><option value="5">5 (max accuracy)</option></select></label>
+          <label class="acc-field"><span>Thinking</span>
+            <select id="thinking-select" class="styled-select"><option value="default">Model default</option><option value="off">Off</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
+          <label class="acc-field"><span>Verification</span>
+            <select id="verify-select" class="styled-select"><option value="off">Off</option><option value="split">When votes disagree</option><option value="always">Always</option></select></label>
+          <label class="acc-field"><span>Temperature</span>
+            <input id="temperature-input" class="acc-input" type="number" min="0" max="1.5" step="0.1" value="0.7"></label>
+          <label class="acc-field acc-check"><input id="fewshot-toggle" type="checkbox" checked><span>Use worked examples</span></label>
         </div>
-        <div class="card-micro-hint">
-          <svg class="hint-icon" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 2.5a.75.75 0 01.75.75v4a.75.75 0 01-1.5 0v-4A.75.75 0 018 3.5zm0 8a1 1 0 110-2 1 1 0 010 2z"/>
-          </svg>
-          <span>Override auto-detection for subject-specific expert prompts and few-shot examples.</span>
+        <div class="card-micro-hint">Higher votes/thinking = more accurate but slower. Edit prompts in subjects.js, examples in fewshots.json.</div>
+      </section>
+
+      <!-- 5c. Miss Log -->
+      <section class="settings-card" id="misses-card">
+        <div class="card-header-row">
+          <span class="card-label">Miss Log</span>
+          <span class="model-badge" id="miss-count">0 misses</span>
         </div>
+        <div class="acc-actions">
+          <button id="export-misses-btn" type="button" class="btn-connect">Export misses</button>
+          <button id="promote-misses-btn" type="button" class="btn-connect">Promote to examples</button>
+          <button id="clear-misses-btn" type="button" class="btn-connect">Clear</button>
+        </div>
+        <div class="card-micro-hint">After an answer appears, click "Mark wrong" and pick the right letter. Promoted misses become few-shot examples.</div>
       </section>
 
       <!-- 6. Stealth Mode (Hide Floating Overlay) -->
@@ -308,28 +304,6 @@
           </label>
         </div>
       </section>
-
-      <!-- Miss Log -->
-      <section class="settings-card">
-        <div class="card-header-row">
-          <span class="card-label">Miss Log</span>
-          <span class="model-badge" id="miss-count-badge">0 misses</span>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button id="export-misses-btn" type="button" class="btn-connect" style="flex:1;" title="Export miss log as JSON">
-            <span>Export Misses</span>
-          </button>
-          <button id="clear-misses-btn" type="button" class="btn-connect" style="flex:1;opacity:0.7;" title="Clear all miss records">
-            <span>Clear</span>
-          </button>
-        </div>
-        <div class="card-micro-hint">
-          <svg class="hint-icon" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 2.5a.75.75 0 01.75.75v4a.75.75 0 01-1.5 0v-4A.75.75 0 018 3.5zm0 8a1 1 0 110-2 1 1 0 010 2z"/>
-          </svg>
-          <span>Mark answers as wrong using the button next to highlighted answers. Export to review and improve.</span>
-        </div>
-      </section>
     </main>
 
     <!-- Footer -->
@@ -346,6 +320,7 @@
     </footer>
   </div>
 
-  <script src="popup.js"></script>
+  <script src="config.js"></script>
+    <script src="popup.js"></script>
 </body>
 </html>

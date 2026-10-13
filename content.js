@@ -9,6 +9,7 @@
   window.__ANSER_INJECTED__ = true;
 
   let isSolving = false;
+  let lastSolve = null; // remembered for the "Mark wrong" button
   let floatingWidget = null;
   let isStealth = false;
   let infoPillTimeout = null;
@@ -58,7 +59,8 @@
     }
 
     if (infoPill) {
-      infoPill.addEventListener("click", () => {
+      infoPill.addEventListener("click", (e) => {
+        if (e.target.closest && e.target.closest(".anser-miss-row")) return;
         clearTimeout(infoPillTimeout);
         infoPill.classList.add("hidden");
       });
@@ -144,41 +146,58 @@
     return (visibleHeight * 2) - distFromCenter + (hasFocus ? 2000 : 0);
   }
 
+  // Text of an element that keeps exponents/subscripts/math (innerText would turn m<sup>2</sup> into "m2")
+  function smartText(el) {
+    if (!el) return "";
+    if (!el.querySelector || !el.querySelector("sup, sub, .katex, mjx-container, .MathJax, math, img[alt], br")) {
+      return el.innerText || el.textContent || "";
+    }
+    const clone = el.cloneNode(true);
+    clone.querySelectorAll(".katex").forEach((k) => {
+      const ann = k.querySelector('annotation[encoding="application/x-tex"]');
+      k.replaceWith(document.createTextNode(ann ? ` ${ann.textContent} ` : k.textContent || ""));
+    });
+    clone.querySelectorAll("mjx-assistive-mml, .MathJax_Preview, script").forEach((n) => n.remove());
+    clone.querySelectorAll("sup").forEach((n) => { n.textContent = `^(${n.textContent})`; });
+    clone.querySelectorAll("sub").forEach((n) => { n.textContent = `_(${n.textContent})`; });
+    clone.querySelectorAll("img").forEach((i) => i.replaceWith(document.createTextNode(i.alt ? ` [image: ${i.alt}] ` : "")));
+    clone.querySelectorAll("p, div, li, tr, br").forEach((n) => n.insertAdjacentText("afterend", "\n"));
+    return clone.textContent || "";
+  }
+
+  // True if the question or its options contain a real picture the text-only model cannot see
+  function hasMeaningfulImage(nodes) {
+    return nodes.some((n) =>
+      n && n.querySelectorAll &&
+      Array.from(n.querySelectorAll("img")).some((img) => isElementVisible(img) && (img.naturalWidth > 40 || img.getBoundingClientRect().width > 40) && !/icon|logo|avatar/i.test(img.className + " " + img.alt))
+    );
+  }
+
   // Clean raw question text and strip platform noise / timers / countdowns
   function cleanQuestionText(raw) {
     if (!raw) return "";
-    let text = raw.normalize('NFC')
-      .replace(/[\u200B\u200C\u200D\u200E\u200F\uFEFF\u00AD\u034F\u061C\u180E]/g, '')
-      .replace(/\s+/g, " ")
+    let text = AnserText.normalizeText(raw)
       .replace(/\[\s*(?:\d+(?:\.\d+)?\s*(?:points?|marks?|pts?)|marked\s*out\s*of\s*\d+(?:\.\d+)?)\s*\]/gi, "")
       .replace(/\b(?:Points?|Marks?):\s*\d+(?:\.\d+)?\b/gi, "")
-      // Strip quiz banners and timers (e.g. "ጥያቄዎችን በመመለስ ይሸለሙ", "8 ሰከንዶች ይቀራሉ", "Total time: 40 ሰከንዶች", "5 of 15")
-      .replace(/ጥያቄዎችን\s*በመመለስ\s*ይሸለሙ/gi, "")
-      .replace(/\d+\s*ሰከንዶች?\s*(?:ይቀራሉ|ቀሩ|የቀሩ)?/gi, "")
+      // Platform banners/timers ONLY. (Never strip bare "5 ሰከንዶች" or "2 of 5": those are real question content.)
+      .replace(/ጥያቄዎችን\s*በመመለስ\s*ይሸለሙ/g, "")
+      .replace(/\d+\s*ሰከንዶች?\s*(?:ይቀራሉ|ቀሩ|የቀሩ)/g, "")
       .replace(/Total\s*time:\s*\d+\s*ሰከንዶች?/gi, "")
-      .replace(/\b\d+\s*of\s*\d+\b/gi, "")
+      .replace(/^\s*\d+\s*of\s*\d+\s*$/gim, "")
       .trim();
 
-    // If options were accidentally bundled in the question string (e.g. "ሀ. ... ለ. ... ሐ. ..."), truncate at the first option marker
-    const optMarkerMatch = text.match(/\s+([ሀለሐመሠረabcdABCD0-9][.)\s]\s*)/);
-    if (optMarkerMatch && text.match(/[ሀA][.)\s].*?[ለB][.)\s]/)) {
-      const idx = text.indexOf(optMarkerMatch[0]);
-      if (idx > 5) {
-        text = text.slice(0, idx).trim();
-      }
-    }
+    // Options accidentally bundled into the question string -> keep only the stem.
+    // Requires a run of 3+ consecutive labels (ሀ. ለ. ሐ. / A. B. C.), so "points A and B" is never cut.
+    const split = AnserText.splitMergedOptions(text);
+    if (split && split.question.length > 3) text = split.question;
 
     return text.trim();
   }
 
-  // Clean raw option text
+  // Clean raw option text (removes the label only; digits/units are preserved)
   function cleanOptionText(raw) {
     if (!raw) return "";
-    return raw.normalize('NFC')
-      .replace(/[\u200B\u200C\u200D\u200E\u200F\uFEFF\u00AD\u034F\u061C\u180E]/g, '')
-      .replace(/\s+/g, " ")
-      .replace(/^([A-Ea-e0-9]\s*(\([ሀለሐመሠረa-zA-Z0-9]\))?|[ሀለሐመሠረa-zA-Z0-9])[\.\)\-\:\s]+/, "")
-      .trim();
+    return AnserText.stripOptionLabel(raw);
   }
 
   // Extract Question and Choices from a scoped container element
@@ -198,7 +217,7 @@
     const isContentVis = qContentEl && isElementVisible(qContentEl);
 
     if (isContentVis) {
-      const body = qContentEl.innerText.trim();
+      const body = smartText(qContentEl).trim();
       if (isColorVis) {
         const rawPrefix = qColorEl.innerText.trim();
         // Strict prefix validation: must be short (< 20 chars) and match question number pattern
@@ -214,7 +233,7 @@
       const siblingH = qColorEl.nextElementSibling;
       if (siblingH && isElementVisible(siblingH)) {
         const rawPrefix = qColorEl.innerText.trim();
-        const body = siblingH.innerText.trim();
+        const body = smartText(siblingH).trim();
         if (rawPrefix.length <= 20 && /^(\d{1,3}[\.\)\-:]|\b(?:Q|Question|ጥያቄ)\s*\d{1,3}[\.\)\-:]?)\s*$/i.test(rawPrefix)) {
           questionText = `${rawPrefix} ${body}`;
         } else {
@@ -251,6 +270,7 @@
       }
     }
 
+    const rawQuestionText = questionText;
     questionText = cleanQuestionText(questionText);
     if (!questionText || questionText.length < 3) return null;
 
@@ -315,15 +335,29 @@
 
     // Ensure all options are strictly visible
     optionElements = optionElements.filter((el) => isElementVisible(el));
-    if (optionElements.length < 2) return null;
+    if (optionElements.length < 2) {
+      // Options may be printed inside the question text itself (ሀ. .. ለ. .. ሐ. .. / A. .. B. .. C. ..)
+      const merged = AnserText.splitMergedOptions(rawQuestionText);
+      if (merged && merged.options.length >= 3) {
+        return {
+          question: cleanQuestionText(merged.question) || questionText,
+          choices: merged.options.map(cleanOptionText),
+          elements: [],
+          container: container,
+          hasImage: hasMeaningfulImage([qContentEl]),
+          detectionType: "merged_split"
+        };
+      }
+      return null;
+    }
 
     // C. Extract Clean Choice Text for each option element
     const choices = optionElements.map((el) => {
       const pBreak = el.querySelector("p.break-all, [class*='break-all']");
-      if (pBreak && isElementVisible(pBreak)) return cleanOptionText(pBreak.innerText);
+      if (pBreak && isElementVisible(pBreak)) return cleanOptionText(smartText(pBreak));
       const allP = Array.from(el.querySelectorAll("p")).filter(isElementVisible);
-      if (allP.length >= 2) return cleanOptionText(allP[allP.length - 1].innerText);
-      return cleanOptionText(el.innerText || el.textContent);
+      if (allP.length >= 2) return cleanOptionText(smartText(allP[allP.length - 1]));
+      return cleanOptionText(smartText(el));
     });
 
     // Final validation: at least 2 choices, not all blank
@@ -334,6 +368,7 @@
       choices: choices,
       elements: optionElements,
       container: container,
+      hasImage: hasMeaningfulImage([qContentEl, ...optionElements]),
       detectionType: "fast_dom_v2_active"
     };
   }
@@ -444,10 +479,10 @@
 
     function getCleanElementText(el) {
       const pBreak = el.querySelector("p.break-all, [class*='break-all']");
-      if (pBreak) return cleanOptionText(pBreak.innerText).toLowerCase();
+      if (pBreak) return cleanOptionText(smartText(pBreak)).toLowerCase();
       const allP = el.querySelectorAll("p");
-      if (allP.length >= 2) return cleanOptionText(allP[allP.length - 1].innerText).toLowerCase();
-      const raw = el.innerText || el.textContent || "";
+      if (allP.length >= 2) return cleanOptionText(smartText(allP[allP.length - 1])).toLowerCase();
+      const raw = smartText(el);
       return cleanOptionText(raw).toLowerCase();
     }
 
@@ -482,7 +517,7 @@
   }
 
   // 4. Highlight or Auto-Click
-  function applyAnswer(targetEl, answer, latencyMs, actionType, payload) {
+  function applyAnswer(targetEl, answer, latencyMs, actionType) {
     // Clear existing highlights
     document.querySelectorAll(".anser-highlight").forEach((el) => {
       el.classList.remove("anser-highlight");
@@ -503,44 +538,6 @@
       </svg>
       <span>AI (${(latencyMs / 1000).toFixed(1)}s${consensusTag})</span>
     `;
-
-    const markWrongBtn = document.createElement("button");
-    markWrongBtn.className = "anser-mark-wrong-btn";
-    markWrongBtn.textContent = "Mark Wrong";
-    markWrongBtn.style.marginLeft = "8px";
-    markWrongBtn.style.fontSize = "0.8em";
-    markWrongBtn.style.cursor = "pointer";
-    markWrongBtn.onclick = (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      const correctLetter = prompt("Enter the correct answer letter (A/B/C/D):");
-      if (correctLetter) {
-        let letterIndex = -1;
-        const upperLetter = correctLetter.toUpperCase().trim();
-        if (upperLetter === 'A') letterIndex = 0;
-        else if (upperLetter === 'B') letterIndex = 1;
-        else if (upperLetter === 'C') letterIndex = 2;
-        else if (upperLetter === 'D') letterIndex = 3;
-
-        const currentQuestionId = payload?.questionId || Date.now().toString();
-        const questionText = payload?.question || 'unknown';
-        const choices = payload?.choices || [];
-
-        chrome.runtime.sendMessage({
-          action: 'LOG_MISS',
-          questionId: currentQuestionId,
-          question: questionText,
-          options: choices,
-          modelAnswer: answer.choice_index,
-          correctAnswer: letterIndex,
-          subject: answer.subject || 'unknown'
-        });
-        markWrongBtn.textContent = '✓ Logged';
-        markWrongBtn.disabled = true;
-      }
-    };
-    badge.appendChild(markWrongBtn);
-
     targetEl.appendChild(badge);
 
     // Scroll element into view smoothly if needed
@@ -582,15 +579,15 @@
     if (floatingWidget) floatingWidget.classList.add("anser-busy");
     if (infoPill) infoPill.classList.add("hidden");
 
-    // 9-second auto-reset watchdog to ensure answers always complete within 10s limit
+    // 90-second auto-reset watchdog (voting + verification + 429 backoff can take a while)
     clearTimeout(solveWatchdog);
     solveWatchdog = setTimeout(() => {
       if (isSolving) {
-        console.warn("[Anser] Solving timed out after 9s. Resetting state.");
+        console.warn("[Anser] Solving timed out after 90s. Resetting state.");
         resetSolvingState();
-        showError("Solving request timed out (<9s). Please try again.");
+        showError("Solving request timed out. Please try again.");
       }
-    }, 9000);
+    }, 90000);
 
     try {
       // Check stored preference for input method (DOM vs Vision)
@@ -628,10 +625,7 @@
           preferredInputMethod: "vision",
           cropArea: cropArea,
           pageUrl: window.location.href,
-          pageTitle: document.title,
-          subjectOverride: window.__anserSubjectOverride || null,
-          question: extracted?.question,
-          choices: extracted?.choices
+          pageTitle: document.title
         };
       } else {
         payload = {
@@ -639,9 +633,9 @@
           preferredInputMethod: "dom",
           question: extracted.question,
           choices: extracted.choices,
+          hasImage: !!extracted.hasImage,
           pageUrl: window.location.href,
-          pageTitle: document.title,
-          subjectOverride: window.__anserSubjectOverride || null
+          pageTitle: document.title
         };
       }
 
@@ -657,27 +651,33 @@
         const { result, latencyMs, actionType, methodUsed } = response;
         const isVision = methodUsed === "vision" || payload.preferredInputMethod === "vision";
         const latencySec = (latencyMs / 1000).toFixed(1);
-        const pillConsensus = result.consensus ? ` (${result.consensus})` : "";
-        const subjectTag = result.subject ? ` [${result.subject}]` : "";
+        const pillConsensus = result.consensus ? ` (${result.consensus}${result.subject ? " · " + result.subject : ""})` : "";
         const answerLabel = formatAnswerLabel(result);
 
         if (isVision) {
           // Vision Crop Mode: cannot highlight or click DOM elements, so a simple notification is the right way
-          showNotification(`✓ ${answerLabel} ${subjectTag} (${latencySec}s${pillConsensus})`, "success", 6000);
+          showNotification(`✓ ${answerLabel} (${latencySec}s${pillConsensus})`, "success", 6000);
         } else {
           // DOM Mode: find and highlight / click target DOM element
           const targetElements = extracted?.elements?.length ? extracted.elements : findCandidateOptionElements();
           const targetEl = findTargetOptionElement(result, targetElements);
 
+          const imgWarn = extracted?.hasImage ? " ⚠ has image" : "";
+          lastSolve = {
+            question: extracted?.question || "",
+            options: result.choices || extracted?.choices || [],
+            modelIdx: result.choice_index,
+            subject: result.subject || "General"
+          };
           if (targetEl) {
-            applyAnswer(targetEl, result, latencyMs, actionType, payload);
+            applyAnswer(targetEl, result, latencyMs, actionType);
             // In non-stealth mode, also show confirmation notification
             if (!isStealth) {
-              showNotification(`✓ ${result.choice_text} ${subjectTag} (${latencySec}s${pillConsensus})`, "success", 4000);
+              showNotification(`✓ ${result.choice_text} (${latencySec}s${pillConsensus})${imgWarn}`, "success", 12000, true);
             }
           } else {
             // Target DOM card not found, fallback to notification
-            showNotification(`✓ ${answerLabel} ${subjectTag} (${latencySec}s${pillConsensus})`, "success", 5000);
+            showNotification(`✓ ${answerLabel} (${latencySec}s${pillConsensus})${imgWarn}`, "success", 12000, !isStealth);
           }
         }
       });
@@ -706,7 +706,12 @@
     return rawText;
   }
 
-  function showNotification(htmlContent, type = "success", durationMs = 5000) {
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  // Text is escaped: option text comes from the page and must never be injected as HTML.
+  function showNotification(text, type = "success", durationMs = 5000, withMissControls = false) {
     const infoPill = document.getElementById("anser-info-pill");
     if (!infoPill) return;
 
@@ -714,14 +719,72 @@
 
     infoPill.innerHTML = `
       <span class="anser-pill-dot"></span>
-      <span class="anser-pill-text">${htmlContent}</span>
+      <span class="anser-pill-text">${escapeHtml(text)}</span>
     `;
     infoPill.className = `anser-info ${type}`;
     infoPill.classList.remove("hidden");
 
+    if (withMissControls && lastSolve && lastSolve.question && lastSolve.options.length >= 2) {
+      addMissControls(infoPill);
+    }
+
     infoPillTimeout = setTimeout(() => {
       infoPill.classList.add("hidden");
     }, durationMs);
+  }
+
+  // "Wrong?" button -> pick the correct letter -> saved to the miss log (chrome.storage.local)
+  function addMissControls(infoPill) {
+    const row = document.createElement("span");
+    row.className = "anser-miss-row";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "anser-miss-btn";
+    btn.textContent = "✗ Mark wrong";
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      clearTimeout(infoPillTimeout);
+      row.innerHTML = "";
+      const lbl = document.createElement("span");
+      lbl.className = "anser-miss-label";
+      lbl.textContent = "Correct:";
+      row.appendChild(lbl);
+      lastSolve.options.forEach((_, i) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "anser-miss-btn anser-miss-letter";
+        b.textContent = "ABCDEF"[i];
+        b.disabled = i === lastSolve.modelIdx;
+        b.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          chrome.runtime.sendMessage(
+            {
+              action: "LOG_MISS",
+              miss: {
+                question: lastSolve.question,
+                options: lastSolve.options,
+                model_answer: "ABCDEF"[lastSolve.modelIdx],
+                correct_answer: "ABCDEF"[i],
+                subject: lastSolve.subject
+              }
+            },
+            (res) => {
+              row.innerHTML = "";
+              const ok = document.createElement("span");
+              ok.className = "anser-miss-label";
+              ok.textContent = res && res.success ? `Saved ✓ (${res.count} misses)` : "Could not save";
+              row.appendChild(ok);
+              infoPillTimeout = setTimeout(() => infoPill.classList.add("hidden"), 2500);
+            }
+          );
+        });
+        row.appendChild(b);
+      });
+    });
+    row.appendChild(btn);
+    infoPill.appendChild(row);
+    // keep the pill open while the mouse is on it
+    infoPill.onmouseenter = () => clearTimeout(infoPillTimeout);
   }
 
   function showError(msg) {
