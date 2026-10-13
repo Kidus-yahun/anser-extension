@@ -98,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  let currentSelectedModel = "gemini-3.5-flash-lite";
+  let currentSelectedModel = "gemini-2.5-flash";
 
   const EYE_OPEN_SVG = `
     <svg class="icon-svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">

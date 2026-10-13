@@ -6,7 +6,7 @@
 
 importScripts("config.js", "textutils.js", "subjects.js", "solver.js");
 
-const DEFAULT_MODEL = "gemini-3.5-flash-lite";
+const DEFAULT_MODEL = "gemini-2.5-flash";
 
 function arrayBufferToBase64(buffer) {
   let binary = "";
@@ -345,34 +345,68 @@ async function callProviderAPI(provider, apiKey, model, systemPrompt, userPrompt
 /**
  * Vision API call to any provider
  */
-async function callProviderVisionAPI(provider, apiKey, model, base64Data, customBaseUrl, timeoutMs = 10000) {
+async function callProviderVisionAPI(provider, apiKey, model, base64Data, customBaseUrl, timeoutMs = 12000) {
   const providerConfig = PROVIDER_ENDPOINTS[provider] || PROVIDER_ENDPOINTS.custom;
-  const url = provider === "gemini"
-    ? providerConfig.chatUrl(apiKey, model)
-    : providerConfig.chatUrl(apiKey, model, customBaseUrl);
+
+  // Resolve a vision-capable model
+  let visionModel = model;
+  if (provider === "gemini") {
+    // Gemini flash-lite or tuned/text models do not support image input modality.
+    // Automatically route image requests to gemini-2.5-flash:
+    if (!visionModel || /flash-lite|lite|text|tuned/i.test(visionModel)) {
+      visionModel = "gemini-2.5-flash";
+    }
+  } else if (provider === "openai") {
+    if (!/4o|vision/i.test(visionModel)) {
+      visionModel = "gpt-4o-mini";
+    }
+  } else if (provider === "anthropic") {
+    if (!/claude-3/i.test(visionModel)) {
+      visionModel = "claude-3-5-haiku-20241022";
+    }
+  } else if (provider === "groq") {
+    if (!/vision/i.test(visionModel)) {
+      visionModel = "llama-3.2-11b-vision-preview";
+    }
+  }
+
   const headers = {
     "Content-Type": "application/json",
     ...providerConfig.authHeader(apiKey)
   };
 
-  let body;
-  if (provider === "gemini") {
-    body = buildGeminiVisionBody(base64Data);
-  } else if (provider === "anthropic") {
-    body = buildAnthropicVisionBody(model, base64Data);
-  } else {
-    // OpenAI-compatible vision (openai, openrouter, groq, custom)
-    body = buildOpenAIVisionBody(model, base64Data);
+  const executeCall = async (targetModel) => {
+    const url = provider === "gemini"
+      ? providerConfig.chatUrl(apiKey, targetModel)
+      : providerConfig.chatUrl(apiKey, targetModel, customBaseUrl);
+
+    let body;
+    if (provider === "gemini") {
+      body = buildGeminiVisionBody(base64Data);
+    } else if (provider === "anthropic") {
+      body = buildAnthropicVisionBody(targetModel, base64Data);
+    } else {
+      body = buildOpenAIVisionBody(targetModel, base64Data);
+    }
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      signal: AbortSignal.timeout(timeoutMs),
+      body: JSON.stringify(body)
+    });
+
+    return await res.json();
+  };
+
+  let data = await executeCall(visionModel);
+
+  // If Gemini reports image input modality not enabled, immediately fall back to gemini-1.5-flash or gemini-2.5-flash
+  if (provider === "gemini" && data?.error && /image.*modality.*not enabled/i.test(data.error.message || "")) {
+    const fallbackModel = visionModel === "gemini-1.5-flash" ? "gemini-2.5-flash" : "gemini-1.5-flash";
+    data = await executeCall(fallbackModel);
   }
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers,
-    signal: AbortSignal.timeout(timeoutMs),
-    body: JSON.stringify(body)
-  });
-
-  const data = await res.json();
   return extractResponseText(provider, data);
 }
 

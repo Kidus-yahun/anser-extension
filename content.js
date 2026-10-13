@@ -289,6 +289,16 @@
       }
     }
 
+    // Strategy B1b: Chakra Radio elements directly
+    if (optionElements.length === 0) {
+      const chakraRadios = Array.from(
+        container.querySelectorAll(".chakra-radio, [class*='chakra-radio'], label.chakra-radio, [role='radiogroup'] label")
+      ).filter((c) => !isIgnoredElement(c) && isElementVisible(c));
+      if (chakraRadios.length >= 2 && chakraRadios.length <= 8) {
+        optionElements = chakraRadios;
+      }
+    }
+
     // Strategy B2: Radio Input grouping
     if (optionElements.length === 0) {
       const radios = Array.from(container.querySelectorAll("input[type='radio'], [role='radio']"))
@@ -356,6 +366,8 @@
 
     // C. Extract Clean Choice Text for each option element
     const choices = optionElements.map((el) => {
+      const radioLabel = el.querySelector(".chakra-radio__label, [class*='chakra-radio__label']");
+      if (radioLabel && isElementVisible(radioLabel)) return cleanOptionText(smartText(radioLabel));
       const pBreak = el.querySelector("p.break-all, [class*='break-all']");
       if (pBreak && isElementVisible(pBreak)) return cleanOptionText(smartText(pBreak));
       const allP = Array.from(el.querySelectorAll("p")).filter(isElementVisible);
