@@ -75,13 +75,43 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 // Listen for global shortcut commands (Alt+Q)
-chrome.commands.onCommand.addListener((command) => {
+chrome.commands.onCommand.addListener(async (command) => {
   if (command === "solve_question") {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]?.id) {
-        chrome.tabs.sendMessage(tabs[0].id, { action: "TRIGGER_SOLVE" });
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tab = tabs[0];
+      if (!tab?.id || !tab.url) return;
+
+      // Skip internal browser pages where content scripts cannot run
+      if (/^(?:chrome|edge|about|devtools|chrome-extension):\/\//i.test(tab.url)) {
+        return;
       }
-    });
+
+      // Try sending message; if content script is missing, dynamically inject it and retry
+      chrome.tabs.sendMessage(tab.id, { action: "TRIGGER_SOLVE" }, async () => {
+        if (chrome.runtime.lastError) {
+          // Content script not yet injected into this tab (e.g. tab opened before extension reloaded)
+          try {
+            await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ["textutils.js", "content.js"]
+            });
+            await chrome.scripting.insertCSS({
+              target: { tabId: tab.id },
+              files: ["content.css"]
+            });
+            // Retry sending trigger to newly injected content script
+            chrome.tabs.sendMessage(tab.id, { action: "TRIGGER_SOLVE" }, () => {
+              if (chrome.runtime.lastError) {}
+            });
+          } catch (injectErr) {
+            // Cannot script this tab (e.g. restricted site), safely ignore
+          }
+        }
+      });
+    } catch (e) {
+      // Safely ignore
+    }
   }
 });
 
