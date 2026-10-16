@@ -40,7 +40,10 @@
       </div>
     `;
 
-    document.body.appendChild(floatingWidget);
+    const mountPoint = document.body || document.documentElement;
+    if (!mountPoint) return;
+
+    document.body ? document.body.appendChild(floatingWidget) : mountPoint.appendChild(floatingWidget);
 
     const solveBtn = document.getElementById("anser-solve-btn");
     const infoPill = document.getElementById("anser-info-pill");
@@ -461,7 +464,7 @@
           return cleanOptionText((label || el).innerText);
         }),
         elements: benchmarkOpts,
-        container: benchmarkQ.closest(".quiz-card, main, div") || document.body,
+        container: benchmarkQ.closest(".quiz-card, main, div") || document.body || document.documentElement,
         detectionType: "benchmark"
       };
     }
@@ -624,7 +627,8 @@
             )
             ?.closest(".react-reveal, [class*='react-reveal'], form, section, .quiz-container") ||
           document.querySelector(".my-content, .text-question-color, .quiz-card, #question-text")?.parentElement ||
-          document.body;
+          document.body ||
+      document.documentElement;
         const rect = quizCard.getBoundingClientRect();
         const pad = 16;
         const cropArea = {
@@ -839,9 +843,33 @@
   window.addEventListener("keydown", handleHotkey, { capture: true });
 
   // Initialize widget when DOM is ready
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", createWidget);
-  } else {
-    createWidget();
+  function initWidget() {
+    if (document.body) {
+      createWidget();
+    } else if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () => {
+        if (document.body) {
+          createWidget();
+        } else {
+          setTimeout(createWidget, 100);
+        }
+      }, { once: true });
+    } else {
+      const observer = new MutationObserver(() => {
+        if (document.body) {
+          observer.disconnect();
+          createWidget();
+        }
+      });
+      if (document.documentElement) {
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+      }
+      setTimeout(() => {
+        observer.disconnect();
+        createWidget();
+      }, 200);
+    }
   }
+
+  initWidget();
 })();
