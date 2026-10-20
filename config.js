@@ -16,10 +16,10 @@ const ANSER_DEFAULTS = {
   // Verification pass off to avoid secondary delay
   verifyMode: "off",
   verifyTemperature: 0.0,
-  // Output token ceiling: 300 tokens is plenty for reasoning + ANSWER: X
-  maxOutputTokens: 300,
-  // Fast 6s timeout so requests never hang
-  timeoutMs: 6000,
+  // Output token ceiling: 1000 tokens ensures reasoning + ANSWER: X are never cut off
+  maxOutputTokens: 1000,
+  // Generous 15s timeout to handle multimodal or network delays
+  timeoutMs: 15000,
   // Retries when reply does not end with ANSWER: X
   maxFormatRetries: 1,
   // Retries on 429/503

@@ -92,10 +92,18 @@ function buildVerifyPrompt(question, choices, hasImage, tally, proposedLetter) {
 /** Returns 0-based option index of the LAST "ANSWER: X" in the text, or -1. */
 function parseAnswerIndex(text, nOptions) {
   if (!text) return -1;
-  const re = /ANSWER\s*[:：=]\s*[*_`(\[]*\s*([A-Fa-f])(?![A-Za-z])/g;
+  const re = /(?:ANSWER|CORRECT OPTION|CORRECT ANSWER)\s*[:：=]\s*[*_`(\[]*\s*(?:OPTION\s*)?([A-Fa-f])(?![A-Za-z])/gi;
   let m, last = -1;
   while ((m = re.exec(text))) last = m[1].toUpperCase().charCodeAt(0) - 65;
-  return last >= 0 && last < nOptions ? last : -1;
+  if (last >= 0 && last < nOptions) return last;
+
+  // Secondary fallback: Look for "Answer is (X)" or "Option (X) is correct"
+  const secondary = /(?:the correct answer is|the answer is|option)\s*[*_`(\[]*\s*([A-Fa-f])(?![A-Za-z])/i.exec(text);
+  if (secondary) {
+    const sIdx = secondary[1].toUpperCase().charCodeAt(0) - 65;
+    if (sIdx >= 0 && sIdx < nOptions) return sIdx;
+  }
+  return -1;
 }
 
 function extractReasoning(text) {
