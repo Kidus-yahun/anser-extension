@@ -98,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  let currentSelectedModel = "gemini-2.5-flash";
+  let currentSelectedModel = "gemini-3.8-flash";
 
   const EYE_OPEN_SVG = `
     <svg class="icon-svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -160,7 +160,10 @@ document.addEventListener("DOMContentLoaded", () => {
       apiKeyInput.value = apiKey;
 
       if (data.selectedModel) {
-        currentSelectedModel = data.selectedModel;
+        currentSelectedModel = data.selectedModel === "gemini-2.5-flash" ? "gemini-3.8-flash" : data.selectedModel;
+        if (data.selectedModel === "gemini-2.5-flash") {
+          chrome.storage.local.set({ selectedModel: "gemini-3.8-flash" });
+        }
       }
 
       if (data.actionType === "auto_click") {

@@ -66,7 +66,7 @@ Standard AI models frequently struggle on Ethiopian exam portals, school exit ex
 
 ### 🛡️ 3. High-Demand Traffic Auto-Pivot & Fault Tolerance
 - **Automatic 503 Pivot**: If a selected Gemini model experiences Google server capacity spikes (`"This model is currently experiencing high demand"`), Anser automatically and seamlessly pivots to an alternate model (`gemini-1.5-flash` or `gemini-2.0-flash`) in the same second without failing.
-- **Multimodal Auto-Routing**: If Vision Mode is used, requests are automatically routed to full vision models (`gemini-2.5-flash` or `llama-3.2-11b-vision-preview`), preventing text-only modality errors.
+- **Multimodal Auto-Routing**: If Vision Mode is used, requests are automatically routed to full vision models (`gemini-3.8-flash` or `llama-3.2-11b-vision-preview`), preventing text-only modality errors.
 
 ### 🎯 4. Fast DOM 2.0 & Chakra UI Scraper
 - **Deep Component Recognition**: Native support for Chakra UI (`.chakra-radio`, `.chakra-radio__label`, `.chakra-stack`), React portals, and standard HTML radio groups.
@@ -78,7 +78,7 @@ Standard AI models frequently struggle on Ethiopian exam portals, school exit ex
 - Employs an automated **Verification Pass** to resolve split votes and break ties decisively.
 
 ### 🔌 6. Multi-Provider AI Hub
-- **Google Gemini**: `gemini-2.5-flash`, `gemini-1.5-flash`, `gemini-2.0-flash`.
+- **Google Gemini**: `gemini-3.8-flash`, `gemini-2.0-flash`, `gemini-1.5-flash`.
 - **Groq**: Ultra-low latency inference via `qwen/qwen3.8-27b`, `openai/gpt-oss-120b`, or `llama-3.2`.
 - **OpenAI & Claude**: Full support for `gpt-4o`, `gpt-4o-mini`, `claude-3-5-sonnet`, and `claude-3-5-haiku`.
 - **Custom / Local AI**: Connect local models via Ollama, LM Studio, or vLLM with standard OpenAI-compatible endpoints.

@@ -6,7 +6,14 @@
 
 importScripts("config.js", "textutils.js", "subjects.js", "solver.js");
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-3.8-flash";
+
+// Auto-migrate away from deprecated gemini-2.5-flash
+chrome.storage.local.get(["selectedModel"], (data) => {
+  if (!data.selectedModel || data.selectedModel === "gemini-2.5-flash") {
+    chrome.storage.local.set({ selectedModel: DEFAULT_MODEL });
+  }
+});
 
 function arrayBufferToBase64(buffer) {
   let binary = "";
@@ -386,9 +393,10 @@ async function callProviderVisionAPI(provider, apiKey, model, base64Data, custom
   let visionModel = model;
   if (provider === "gemini") {
     // Gemini flash-lite or tuned/text models do not support image input modality.
-    // Automatically route image requests to gemini-2.5-flash:
-    if (!visionModel || /flash-lite|lite|text|tuned/i.test(visionModel)) {
-      visionModel = "gemini-2.5-flash";
+    // Also migrate deprecated models (e.g. gemini-2.5-flash).
+    // Automatically route image requests to gemini-3.8-flash:
+    if (!visionModel || /flash-lite|lite|text|tuned|gemini-2\.5/i.test(visionModel)) {
+      visionModel = "gemini-3.8-flash";
     }
   } else if (provider === "openai") {
     if (!/4o|vision/i.test(visionModel)) {
@@ -435,10 +443,13 @@ async function callProviderVisionAPI(provider, apiKey, model, base64Data, custom
 
   let data = await executeCall(visionModel);
 
-  // If Gemini reports image input modality not enabled, immediately fall back to gemini-1.5-flash or gemini-2.5-flash
-  if (provider === "gemini" && data?.error && /image.*modality.*not enabled/i.test(data.error.message || "")) {
-    const fallbackModel = visionModel === "gemini-1.5-flash" ? "gemini-2.5-flash" : "gemini-1.5-flash";
-    data = await executeCall(fallbackModel);
+  // If Gemini reports image input modality not enabled or model deprecated, immediately fall back to gemini-3.8-flash
+  if (provider === "gemini" && data?.error) {
+    const errMsg = data.error.message || "";
+    if (/image.*modality.*not enabled|no longer available|not found|gemini-2\.5/i.test(errMsg)) {
+      const fallbackModel = "gemini-3.8-flash";
+      data = await executeCall(fallbackModel);
+    }
   }
 
   return extractResponseText(provider, data);
@@ -550,6 +561,15 @@ async function callModelText(provider, apiKey, model, systemPrompt, userPrompt, 
 
     if (!res.ok) {
       const msg = data?.error?.message || data?.error?.type || `HTTP ${res.status}`;
+      // If Gemini model is deprecated or no longer available, automatically pivot to gemini-3.8-flash and update storage
+      if (provider === "gemini" && !pivoted && /no longer available|not found|gemini-2\.5/i.test(msg)) {
+        pivoted = true;
+        const altModel = "gemini-3.8-flash";
+        console.warn(`[Anser] ${model} no longer available. Seamlessly pivoting to ${altModel}`);
+        model = altModel;
+        try { chrome.storage.local.set({ selectedModel: altModel }); } catch (e) {}
+        continue;
+      }
       if (res.status === 400) {
         if (!dropped.thinking && /thinking/i.test(msg)) { dropped.thinking = true; continue; }
         if (!dropped.temperature && /temperature/i.test(msg)) { dropped.temperature = true; continue; }
@@ -718,7 +738,10 @@ async function handleSolveQuestion(request, senderTab) {
     throw new Error("API Key is missing. Click the Anser extension icon and enter your API Key.");
   }
   const provider = config.aiProvider || "gemini";
-  const model = config.selectedModel || DEFAULT_MODEL;
+  let model = config.selectedModel || DEFAULT_MODEL;
+  if (provider === "gemini" && (!model || model === "gemini-2.5-flash")) {
+    model = DEFAULT_MODEL;
+  }
   const actionType = config.actionType || "highlight";
   const inputMethod = request.preferredInputMethod || config.inputMethod || "dom";
   const consensusMode = config.consensusMode !== false; // = voting enabled
