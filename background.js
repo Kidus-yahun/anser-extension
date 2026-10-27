@@ -8,9 +8,11 @@ importScripts("config.js", "textutils.js", "subjects.js", "solver.js");
 
 const DEFAULT_MODEL = "gemini-3.5-flash";
 
-// Auto-migrate away from deprecated or slow models (gemini-2.5-flash / gemini-3.8-flash)
-chrome.storage.local.get(["selectedModel", "accuracySettings"], (data) => {
-  if (!data.selectedModel || data.selectedModel === "gemini-2.5-flash" || data.selectedModel === "gemini-3.8-flash") {
+// Auto-migrate away from deprecated, slow, or weak models
+chrome.storage.local.get(["selectedModel", "aiProvider", "accuracySettings"], (data) => {
+  if (data.aiProvider === "groq" && (!data.selectedModel || data.selectedModel === "allam-2-7b")) {
+    chrome.storage.local.set({ selectedModel: "qwen/qwen3.8-27b" });
+  } else if (!data.selectedModel || data.selectedModel === "gemini-2.5-flash" || data.selectedModel === "gemini-3.8-flash") {
     chrome.storage.local.set({ selectedModel: DEFAULT_MODEL });
   }
   if (data.accuracySettings) {
@@ -717,12 +719,20 @@ async function fetchOpenAICompatibleModels(apiKey, url, headers) {
   }
 
   const models = (data.data || [])
-    .filter((m) => m.id)
+    .filter((m) => m.id && !/whisper|guard|tts|embed|rerank/i.test(m.id))
     .map((m) => ({
       id: m.id,
-      displayName: m.id
-    }))
-    .sort((a, b) => a.id.localeCompare(b.id));
+      displayName: `⚡ ${m.id}`
+    }));
+
+  models.sort((a, b) => {
+    // Prioritize high-accuracy reasoning models (Qwen, GPT-OSS 120B, Llama 70B)
+    const aPriority = /qwen|gpt-oss-120b|llama-3\.3|llama-3\.1-70b/i.test(a.id);
+    const bPriority = /qwen|gpt-oss-120b|llama-3\.3|llama-3\.1-70b/i.test(b.id);
+    if (aPriority && !bPriority) return -1;
+    if (!aPriority && bPriority) return 1;
+    return a.id.localeCompare(b.id);
+  });
 
   if (models.length === 0) {
     return { success: false, error: "No models found for this API key" };
@@ -752,6 +762,9 @@ async function handleSolveQuestion(request, senderTab) {
   let model = config.selectedModel || DEFAULT_MODEL;
   if (provider === "gemini" && (!model || model === "gemini-2.5-flash" || model === "gemini-3.8-flash")) {
     model = DEFAULT_MODEL;
+  }
+  if (provider === "groq" && (!model || model === "allam-2-7b")) {
+    model = "qwen/qwen3.8-27b";
   }
   const actionType = config.actionType || "highlight";
   const inputMethod = request.preferredInputMethod || config.inputMethod || "dom";

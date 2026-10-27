@@ -304,12 +304,15 @@ document.addEventListener("DOMContentLoaded", () => {
           modelSelect.appendChild(opt);
         });
 
-        // Restore target model if available
-        const hasTarget = models.some((m) => m.id === targetModel);
+        // Restore target model if available (avoiding weak models like allam-2-7b on Groq)
+        const isWeakGroqModel = provider === "groq" && targetModel === "allam-2-7b";
+        const hasTarget = !isWeakGroqModel && models.some((m) => m.id === targetModel);
         if (hasTarget) {
           modelSelect.value = targetModel;
         } else if (models.length > 0) {
-          modelSelect.value = models[0].id;
+          // If Groq, prefer qwen/qwen3.8-27b for high reasoning accuracy
+          const bestGroq = models.find((m) => /qwen|gpt-oss-120b/i.test(m.id));
+          modelSelect.value = bestGroq ? bestGroq.id : models[0].id;
         }
 
         // Persist validated key and chosen model
