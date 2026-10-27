@@ -546,9 +546,10 @@ async function callModelText(provider, apiKey, model, systemPrompt, userPrompt, 
     let data = null;
     try { data = await res.json(); } catch (e) { /* non-JSON body */ }
 
-    if (res.status === 429 || res.status === 503 || (data?.error && /high demand|temporarily unavailable/i.test(data.error.message || ""))) {
+    if (res.status === 429 || res.status === 503 || (data?.error && /high demand|temporarily unavailable|resource_exhausted/i.test(data.error.message || data.error.status || ""))) {
       const msg = data?.error?.message || "";
-      if (/quota/i.test(msg) || /resource_exhausted/i.test(data?.error?.status || "")) {
+      // Only throw fatal if it is explicitly a daily quota exhaustion
+      if (/per day|daily.*quota|quota metric '.*day'/i.test(msg)) {
         const err = new Error("Google Gemini daily free quota exceeded (429). Please create a new free API key at aistudio.google.com or switch to Groq.");
         err.fatal = true;
         throw err;
@@ -557,14 +558,14 @@ async function callModelText(provider, apiKey, model, systemPrompt, userPrompt, 
       // If a Gemini model is experiencing high demand, automatically pivot to an available fallback model!
       if (provider === "gemini" && !pivoted && /high demand|spikes in demand|overloaded/i.test(msg)) {
         pivoted = true;
-        const altModel = model === "gemini-1.5-flash" ? "gemini-2.0-flash" : "gemini-1.5-flash";
+        const altModel = model === "gemini-3.5-flash" ? "gemini-2.0-flash" : "gemini-3.5-flash";
         console.log(`[Anser] ${model} experiencing high demand. Seamlessly pivoting to ${altModel}`);
         model = altModel;
         continue;
       }
 
-      if (backoffs >= (opts.maxRetries429 ?? 2)) throw new Error(`Rate limited / overloaded (HTTP ${res.status}). Try again in a moment.`);
-      await sleep(600 * 2 ** backoffs);
+      if (backoffs >= (opts.maxRetries429 ?? 2)) throw new Error("Rate limit reached (429). Please wait a few seconds or switch to Groq.");
+      await sleep(1000 * 2 ** backoffs);
       backoffs++;
       continue;
     }
