@@ -892,6 +892,9 @@
   }
 
   function showError(msg) {
+    if (typeof msg === "string" && /Extension context invalidated/i.test(msg)) {
+      msg = "Extension updated. Please refresh this page (F5) to reconnect.";
+    }
     if (isStealth) {
       console.log("[Anser]:", msg);
       return;
