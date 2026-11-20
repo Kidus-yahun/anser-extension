@@ -18,8 +18,8 @@ const ANSER_DEFAULTS = {
   verifyTemperature: 0.0,
   // Output token ceiling: 1000 tokens ensures reasoning + ANSWER: X are never cut off
   maxOutputTokens: 1000,
-  // Generous 15s timeout to handle multimodal or network delays
-  timeoutMs: 15000,
+  // Generous 45s timeout to handle slow mobile/proxy connections or network delays
+  timeoutMs: 45000,
   // Retries when reply does not end with ANSWER: X
   maxFormatRetries: 1,
   // Retries on 429/503

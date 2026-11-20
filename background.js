@@ -19,7 +19,7 @@ chrome.storage.local.get(["selectedModel", "aiProvider", "accuracySettings"], (d
     const s = { ...data.accuracySettings };
     let changed = false;
     if (s.maxOutputTokens < 1000) { s.maxOutputTokens = 1000; changed = true; }
-    if (s.timeoutMs < 15000) { s.timeoutMs = 15000; changed = true; }
+    if (!s.timeoutMs || s.timeoutMs < 45000) { s.timeoutMs = 45000; changed = true; }
     if (changed) chrome.storage.local.set({ accuracySettings: s });
   }
 });

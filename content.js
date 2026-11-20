@@ -660,8 +660,8 @@
   async function triggerSolve() {
     const now = Date.now();
     if (isSolving) {
-      if (now - lastSolveStartTime > 20000) {
-        // Auto-heal stuck state after 20 seconds
+      if (now - lastSolveStartTime > 50000) {
+        // Auto-heal stuck state after 50 seconds
         resetSolvingState();
       } else {
         // Silently debounce rapid triggers (no console.warn to avoid extension error badge)
@@ -678,14 +678,14 @@
     if (floatingWidget) floatingWidget.classList.add("anser-busy");
     if (infoPill) infoPill.classList.add("hidden");
 
-    // 25-second auto-reset watchdog
+    // 60-second auto-reset watchdog
     clearTimeout(solveWatchdog);
     solveWatchdog = setTimeout(() => {
       if (isSolving) {
         resetSolvingState();
         showError("Solving request timed out. Please try again.");
       }
-    }, 25000);
+    }, 60000);
 
     try {
       // Check stored preference for input method (DOM vs Vision)
