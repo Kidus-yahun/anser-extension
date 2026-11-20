@@ -649,13 +649,17 @@ async function fetchGeminiModels(apiKey) {
 
   const validModels = data.models
     .filter((m) => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"))
+    .filter((m) => !/gemini-2\.5-flash|gemini-2\.5-flash-lite/i.test(m.name))
     .map((m) => ({
       id: m.name.replace("models/", ""),
-      displayName: `⚡ ${m.displayName || m.name.replace("models/", "")}`,
+      displayName: (m.name.includes("3.5-flash-lite") ? "⚡ " : "🧠 ") + (m.displayName || m.name.replace("models/", "")) + (m.name.includes("3.5-flash-lite") ? " (Fastest)" : ""),
       description: m.description || ""
     }));
 
   validModels.sort((a, b) => {
+    const aTop = a.id === "gemini-3.5-flash-lite" ? 2 : a.id === "gemini-3.5-flash" ? 1 : 0;
+    const bTop = b.id === "gemini-3.5-flash-lite" ? 2 : b.id === "gemini-3.5-flash" ? 1 : 0;
+    if (aTop !== bTop) return bTop - aTop;
     const aFlash = a.id.toLowerCase().includes("flash");
     const bFlash = b.id.toLowerCase().includes("flash");
     if (aFlash && !bFlash) return -1;
