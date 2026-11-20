@@ -362,7 +362,7 @@ function extractResponseText(provider, data) {
 /**
  * Generic API call to any provider
  */
-async function callProviderAPI(provider, apiKey, model, systemPrompt, userPrompt, customBaseUrl, timeoutMs = 8000) {
+async function callProviderAPI(provider, apiKey, model, systemPrompt, userPrompt, customBaseUrl, timeoutMs = 15000) {
   const providerConfig = PROVIDER_ENDPOINTS[provider] || PROVIDER_ENDPOINTS.custom;
   const url = provider === "gemini"
     ? providerConfig.chatUrl(apiKey, model)
@@ -381,12 +381,20 @@ async function callProviderAPI(provider, apiKey, model, systemPrompt, userPrompt
     body = buildOpenAITextBody(model, systemPrompt, userPrompt);
   }
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers,
-    signal: AbortSignal.timeout(timeoutMs),
-    body: JSON.stringify(body)
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers,
+      signal: AbortSignal.timeout(timeoutMs),
+      body: JSON.stringify(body)
+    });
+  } catch (err) {
+    if (err.name === "TimeoutError" || err.message?.includes("timed out")) {
+      throw new Error("Request timed out. Please check your internet connection or switch to Groq.");
+    }
+    throw err;
+  }
 
   const data = await res.json();
   return extractResponseText(provider, data);
@@ -395,7 +403,7 @@ async function callProviderAPI(provider, apiKey, model, systemPrompt, userPrompt
 /**
  * Vision API call to any provider
  */
-async function callProviderVisionAPI(provider, apiKey, model, base64Data, customBaseUrl, timeoutMs = 12000) {
+async function callProviderVisionAPI(provider, apiKey, model, base64Data, customBaseUrl, timeoutMs = 25000) {
   const providerConfig = PROVIDER_ENDPOINTS[provider] || PROVIDER_ENDPOINTS.custom;
 
   // Resolve a vision-capable model
@@ -440,12 +448,20 @@ async function callProviderVisionAPI(provider, apiKey, model, base64Data, custom
       body = buildOpenAIVisionBody(targetModel, base64Data);
     }
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers,
-      signal: AbortSignal.timeout(timeoutMs),
-      body: JSON.stringify(body)
-    });
+    let res;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers,
+        signal: AbortSignal.timeout(timeoutMs),
+        body: JSON.stringify(body)
+      });
+    } catch (err) {
+      if (err.name === "TimeoutError" || err.message?.includes("timed out")) {
+        throw new Error("Vision request timed out (25s). Please try DOM mode or switch to Groq.");
+      }
+      throw err;
+    }
 
     return await res.json();
   };

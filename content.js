@@ -215,9 +215,33 @@
     // A. Extract Question Text
     let questionText = "";
 
-    // A1. Specific anchor headers (React/Chakra exam portal: .text-question-color + .my-content)
-    const qColorEl = container.querySelector(".text-question-color, [class*='question-color']");
-    const qContentEl = container.querySelector(".my-content, [class*='my-content'], #question-text, [class*='qtext']");
+    // A1. Specific anchor headers (React/Chakra exam portal: .text-question-color + .my-content + W3Schools #qtext)
+    const qColorEl = container.querySelector(".text-question-color, [class*='question-color']") ||
+                     container.parentElement?.querySelector(".text-question-color, [class*='question-color']");
+    let qContentEl = container.querySelector(".my-content, [class*='my-content'], #question-text, [class*='qtext'], #qtext, p.qtext");
+    if (!qContentEl) {
+      // Look at preceding siblings (e.g. W3Schools <p id="qtext"> immediately above <form id="quizform">)
+      let prev = container.previousElementSibling;
+      while (prev && !qContentEl) {
+        if (prev.matches && prev.matches("#qtext, [class*='qtext'], #question-text, .my-content, .question, p, h1, h2, h3, h4")) {
+          if (!isIgnoredElement(prev) && isElementVisible(prev) && prev.innerText.trim().length >= 3) {
+            qContentEl = prev;
+            break;
+          }
+        }
+        qContentEl = prev.querySelector ? prev.querySelector("#qtext, [class*='qtext'], #question-text, .my-content") : null;
+        prev = prev.previousElementSibling;
+      }
+    }
+    if (!qContentEl && container.parentElement) {
+      qContentEl = container.parentElement.querySelector("#qtext, [class*='qtext'], #question-text, .my-content");
+    }
+    if (!qContentEl) {
+      const gQ = document.querySelectorAll("#qtext, #question-text, .my-content, p[id*='qtext']");
+      if (gQ.length === 1 && isElementVisible(gQ[0])) {
+        qContentEl = gQ[0];
+      }
+    }
 
     const isColorVis = qColorEl && isElementVisible(qColorEl);
     const isContentVis = qContentEl && isElementVisible(qContentEl);
@@ -308,7 +332,7 @@
         .filter((r) => !isIgnoredElement(r) && isElementVisible(r));
       if (radios.length >= 2 && radios.length <= 8) {
         optionElements = radios
-          .map((r) => r.closest("label, div.cursor-pointer, [class*='option'], li, div") || r.parentElement)
+          .map((r) => r.closest("label, .radiocontainer, div.cursor-pointer, [class*='option'], li, div") || r.parentElement)
           .filter((el) => isElementVisible(el));
       }
     }
@@ -399,22 +423,22 @@
     // Find all visible option elements on the screen and trace to their enclosing card
     const visibleOptions = Array.from(
       document.querySelectorAll(
-        ".chakra-stack > div, .options-stack > div, [role='radiogroup'] > div, input[type='radio'], button.option, [class*='option'], div.cursor-pointer, div[value], .option-btn"
+        ".chakra-stack > div, .options-stack > div, [role='radiogroup'] > div, input[type='radio'], button.option, [class*='option'], div.cursor-pointer, div[value], .option-btn, .radiocontainer, #altcontainer label"
       )
     ).filter((el) => !isIgnoredElement(el) && isElementVisible(el));
 
     visibleOptions.forEach((opt) => {
-      const card = opt.closest(".react-reveal, [class*='react-reveal'], .quiz-card, .question-card, .card, fieldset, form") ||
+      const card = opt.closest(".react-reveal, [class*='react-reveal'], .quiz-card, .question-card, .card, fieldset, form, #quizform, #quizmain") ||
                    opt.parentElement?.parentElement?.parentElement;
       if (card && !isIgnoredElement(card) && !isPageLevelContainer(card) && isElementVisible(card)) {
         rawCandidates.add(card);
       }
     });
 
-    // Strategy 2: Targeted visible anchor elements (.my-content, .text-question-color, #question-text)
-    document.querySelectorAll(".my-content, .text-question-color, [class*='question-color'], #question-text, [class*='qtext']").forEach((el) => {
+    // Strategy 2: Targeted visible anchor elements (.my-content, .text-question-color, #question-text, #qtext)
+    document.querySelectorAll(".my-content, .text-question-color, [class*='question-color'], #question-text, [class*='qtext'], #qtext, p.qtext").forEach((el) => {
       if (isIgnoredElement(el) || !isElementVisible(el)) return;
-      const card = el.closest(".react-reveal, [class*='react-reveal'], .quiz-card, .question-card, .card, fieldset, form") ||
+      const card = el.closest(".react-reveal, [class*='react-reveal'], .quiz-card, .question-card, .card, fieldset, form, #quizform, #quizmain") ||
                    el.parentElement?.parentElement;
       if (card && !isIgnoredElement(card) && !isPageLevelContainer(card) && isElementVisible(card)) {
         rawCandidates.add(card);
@@ -423,6 +447,7 @@
 
     // Strategy 3: Standard card selectors (excluding page-level wrappers)
     const containerSelectors = [
+      "#quizform, #quizmain, [id*='quiz']",
       ".react-reveal, [class*='react-reveal']",
       ".quiz-card, .question-card, .que, [class*='question-container']",
       "fieldset, [role='radiogroup']",
@@ -467,6 +492,52 @@
         container: benchmarkQ.closest(".quiz-card, main, div") || document.body || document.documentElement,
         detectionType: "benchmark"
       };
+    }
+
+    // Universal Fallback: Any visible question element + visible radio inputs or option labels
+    const visibleRadios = Array.from(document.querySelectorAll("input[type='radio'], [role='radio']"))
+      .filter((r) => !isIgnoredElement(r) && isElementVisible(r));
+    if (visibleRadios.length >= 2) {
+      const firstRadio = visibleRadios[0];
+      const formOrContainer = firstRadio.closest("form, fieldset, [role='radiogroup'], #quizmain, .quiz-card, main") || document.body;
+      
+      let qEl = formOrContainer.querySelector("#qtext, [class*='qtext'], #question-text, .my-content, h1, h2, h3, h4, legend");
+      if (!qEl) {
+        let prev = formOrContainer.previousElementSibling;
+        while (prev && !qEl) {
+          if (prev.matches && prev.matches("#qtext, [class*='qtext'], #question-text, .my-content, p, h1, h2, h3, h4")) {
+            if (isElementVisible(prev) && prev.innerText.trim().length >= 3) {
+              qEl = prev;
+              break;
+            }
+          }
+          qEl = prev.querySelector ? prev.querySelector("#qtext, [class*='qtext'], #question-text, .my-content") : null;
+          prev = prev.previousElementSibling;
+        }
+      }
+      if (!qEl) {
+        qEl = document.querySelector("#qtext, #question-text, .my-content, [class*='qtext']");
+      }
+      
+      if (qEl && isElementVisible(qEl)) {
+        const qText = cleanQuestionText(smartText(qEl));
+        if (qText && qText.length >= 3) {
+          const optionEls = visibleRadios
+            .map((r) => r.closest("label, .radiocontainer, div.cursor-pointer, [class*='option'], li, div") || r.parentElement)
+            .filter((el) => el && isElementVisible(el));
+          const choices = optionEls.map((el) => cleanOptionText(smartText(el)));
+          if (choices.length >= 2 && !choices.every((c) => c.length === 0)) {
+            return {
+              question: qText,
+              choices: choices,
+              elements: optionEls,
+              container: formOrContainer,
+              hasImage: hasMeaningfulImage([qEl, ...optionEls]),
+              detectionType: "universal_radio_fallback"
+            };
+          }
+        }
+      }
     }
 
     return null;
@@ -564,6 +635,13 @@
     // If Auto-Click mode
     if (actionType === "auto_click") {
       setTimeout(() => {
+        const radioInput = targetEl.querySelector("input[type='radio']") || (targetEl.matches("input[type='radio']") ? targetEl : null);
+        if (radioInput) {
+          radioInput.checked = true;
+          radioInput.dispatchEvent(new Event("change", { bubbles: true }));
+          radioInput.dispatchEvent(new Event("input", { bubbles: true }));
+          radioInput.click();
+        }
         targetEl.click();
       }, 150);
     }
@@ -582,8 +660,8 @@
   async function triggerSolve() {
     const now = Date.now();
     if (isSolving) {
-      if (now - lastSolveStartTime > 6000) {
-        // Auto-heal stuck state after 6 seconds
+      if (now - lastSolveStartTime > 20000) {
+        // Auto-heal stuck state after 20 seconds
         resetSolvingState();
       } else {
         // Silently debounce rapid triggers (no console.warn to avoid extension error badge)
@@ -600,14 +678,14 @@
     if (floatingWidget) floatingWidget.classList.add("anser-busy");
     if (infoPill) infoPill.classList.add("hidden");
 
-    // 8-second auto-reset watchdog
+    // 25-second auto-reset watchdog
     clearTimeout(solveWatchdog);
     solveWatchdog = setTimeout(() => {
       if (isSolving) {
         resetSolvingState();
         showError("Solving request timed out. Please try again.");
       }
-    }, 8000);
+    }, 25000);
 
     try {
       // Check stored preference for input method (DOM vs Vision)
