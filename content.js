@@ -108,6 +108,12 @@
     if (!el || !(el instanceof Element)) return false;
     if (el.getAttribute("aria-hidden") === "true") return false;
 
+    // For radio / checkbox inputs whose visual box is hidden by custom CSS: check parent label/container
+    if (el.tagName === "INPUT" && (el.type === "radio" || el.type === "checkbox")) {
+      const p = el.closest("label, .radiocontainer, [class*='radio'], div") || el.parentElement;
+      if (p && p !== el) return isElementVisible(p);
+    }
+
     // Zero bounding rect means hidden, collapsed, or detached
     const rect = el.getBoundingClientRect();
     if (rect.width <= 2 || rect.height <= 2) return false;
